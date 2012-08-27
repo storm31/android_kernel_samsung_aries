@@ -5552,9 +5552,7 @@ wl_bss_connect_done(struct wl_priv *wl, struct net_device *ndev,
 			conn_info->req_ie_len,
 			conn_info->resp_ie,
 			conn_info->resp_ie_len,
-			completed ? WLAN_STATUS_SUCCESS :
-			(e->reason) ? ntoh32(e->reason) :
-			WLAN_STATUS_UNSPECIFIED_FAILURE,
+			completed ? WLAN_STATUS_SUCCESS : e->reason,
 			GFP_KERNEL);
 		if (completed)
 			WL_INFO(("Report connect result - connection succeeded\n"));
