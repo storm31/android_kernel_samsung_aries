@@ -10,10 +10,9 @@ ccflags-y := \
 	-Wstrict-prototypes\
 	-Wno-unused-parameter\
 	-Wno-sign-compare\
-	-Werror\
 	-fno-strict-aliasing\
 	-Wno-pointer-arith\
-	-Os
+	-O3
 
 ccflags-y += -DLINUX -D__linux__ -DANDROID
 ccflags-y += -Idrivers/gpu/pvr
