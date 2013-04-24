@@ -43,6 +43,7 @@ static int gFirmware_Update_State = FW_UPDATE_READY;
 
 static bool buttons_enabled = true;
 static int cpufreq_lock = 1;
+static int key_led_brightness = 1;
 
 static bool leds_on = true;
 static int leds_timeout = 1600;
@@ -103,11 +104,7 @@ void init_led(void)
 static void touch_led_on(int val)
 {
     static int preset = 0;
-    int set = 2;
 //    printk(KERN_DEBUG "[TSP] keyled : %d \n", val );
-
-    if(val < 42)
-        set = 1;
 
     if(val > 0)
         mod_timer(&leds_timer, jiffies + msecs_to_jiffies(leds_timeout));
@@ -116,26 +113,30 @@ static void touch_led_on(int val)
 
     if(val > 0 && buttons_enabled && leds_timeout != 0)
     {
-        if(set !=preset)
-        {
+        if( val != preset ) {
             //KEYLED is only working in low current mode.
             led_control(16);
             led_control(KEYLED_ADDRESS_MAX);      // [Address ] Max current setting
             led_control(KEYLED_DATA_LOW);           // [Data] Low current mode
             led_control(KEYLED_ADDRESS_LOW);      // [Address] Low current mode
-            if(set == 1)
-            {
-                led_control(2);                                     // [Data] 0.5mA
-                preset = 1;
-                //printk(KERN_DEBUG "[TSP] keyled : 0.5mA\n");
-            }
-            else
-            {
-                led_control(4);                                     // [Data] 2mA
-                preset = 2;
-                leds_on = true;
-                //printk(KERN_DEBUG "[TSP] keyled : 2mA\n");
-            }
+			switch( val ) {
+				case 1:
+		            led_control(2);		// [Data] 0.5mA
+		            preset = 1;
+					break;
+				case 2:
+		            led_control(3);		// [Data] 1mA
+		            preset = 2;
+					break;
+				case 3:
+		            led_control(4);		// [Data] 2mA
+		            preset = 3;
+					break;
+				default:
+		            led_control(2);		// [Data] 0.5mA
+		            preset = 1;
+					break;
+			}
         }
     }
     else
@@ -202,7 +203,7 @@ static ssize_t key_led_store(struct device *dev, struct device_attribute *attr,
     }
 
     if(i > 0)
-        touch_led_on(1);
+        touch_led_on(key_led_brightness);
     else
         touch_led_on(0);
 
@@ -211,6 +212,32 @@ static ssize_t key_led_store(struct device *dev, struct device_attribute *attr,
 static DEVICE_ATTR(brightness, S_IRUGO | S_IWUSR, NULL, key_led_store);
 
 #endif      //KEY_LED_CONTROL
+
+static ssize_t key_led_brightness_write(struct device *dev, struct device_attribute *attr,
+		const char *buf, size_t size)
+{
+	unsigned int value;
+
+	if ( sscanf( buf, "%du", &value ) == 1 ) {
+
+		if ( value >= 0 && value <= 3 ) {
+			key_led_brightness = value;
+			pr_info( "[TSP] keyled brightness - value: %d\n", key_led_brightness );
+		} else {
+			pr_info( "%s: invalid input range %u\n", __FUNCTION__, value );
+		}
+	} else {
+		pr_info( "%s: invalid input: \n", __FUNCTION__ );
+	}
+	touch_led_on( key_led_brightness );
+	return size;
+}
+
+static ssize_t key_led_brightness_read( struct device *dev,
+	struct device_attribute *attr, char *buf )
+{
+	return sprintf( buf, "%d\n", key_led_brightness );
+}
 
 static void release_all_fingers(struct input_dev *input_dev)
 {
@@ -987,13 +1014,13 @@ static ssize_t buttons_enabled_status_write(struct device *dev,
 			if(data == 1) {
 				pr_info("%s: key function enabled\n", __FUNCTION__);
 				buttons_enabled = true;
-				touch_led_on(255);
+				touch_led_on(key_led_brightness);
 			}
 
 			if(data == 0) {
 				pr_info("%s: key function disabled\n", __FUNCTION__);
 				buttons_enabled = false;
-				touch_led_on(false);
+				touch_led_on(0);
 			}
 		} else {
 			pr_info("%s: invalid input range %u\n", __FUNCTION__, data);
@@ -1243,7 +1270,7 @@ static irqreturn_t qt602240_interrupt(int irq, void *dev_id)
 
     if(!leds_on) {
         leds_on = true;
-        touch_led_on(1);
+        touch_led_on(key_led_brightness);
     } else {
         mod_timer(&leds_timer, jiffies + msecs_to_jiffies(leds_timeout));
     }
@@ -1779,6 +1806,7 @@ static ssize_t leds_timeout_write(struct device *dev, struct device_attribute *a
 
 static DEVICE_ATTR(buttons_enabled, S_IRUGO | S_IWUGO , buttons_enabled_status_read, buttons_enabled_status_write);
 static DEVICE_ATTR(cpufreq_lock, S_IRUGO | S_IWUGO , cpufreq_lock_read, cpufreq_lock_write);
+static DEVICE_ATTR(key_led_brightness, S_IRUGO | S_IWUGO , key_led_brightness_read, key_led_brightness_write);
 static DEVICE_ATTR(info, 0444, qt602240_info_show, NULL);
 static DEVICE_ATTR(object_table, 0444, qt602240_object_table_show, NULL);
 static DEVICE_ATTR(object, 0664, qt602240_object_show, qt602240_object_store);
@@ -1789,6 +1817,7 @@ static DEVICE_ATTR(leds_timeout, S_IRUGO | S_IWUGO, leds_timeout_read, leds_time
 static struct attribute *qt602240_attrs[] = {
 	&dev_attr_buttons_enabled.attr,
 	&dev_attr_cpufreq_lock.attr,
+	&dev_attr_key_led_brightness.attr,
 	&dev_attr_info.attr,
 	&dev_attr_object_table.attr,
 	&dev_attr_object.attr,
@@ -2322,7 +2351,7 @@ static int qt602240_suspend(struct i2c_client *client, pm_message_t mesg)
     release_all_keys(data->input_dev);
 
 #if defined (KEY_LED_CONTROL)
-    touch_led_on(false);
+    touch_led_on(0);
 #endif      //KEY_LED_CONTROL
 
     qt_timer_state = 0;
