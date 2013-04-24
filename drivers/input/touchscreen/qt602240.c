@@ -42,7 +42,7 @@ static int set_mode_for_amoled = 0;		//0: TFt-LCD, 1: AMOLED
 static int gFirmware_Update_State = FW_UPDATE_READY;
 
 static bool buttons_enabled = true;
-static int cpufreq_lock = 1;
+static int cpufreq_lock = 2;
 static int key_led_brightness = 1;
 
 static bool leds_on = true;
@@ -1046,7 +1046,7 @@ static ssize_t cpufreq_lock_write( struct device *dev,
 
 	if ( sscanf( buf, "%du", &value ) == 1 ) {
 
-		if ( value >= 0 && value <= 2 ) {
+		if ( value >= 0 && value <= 3 ) {
 
 			cpufreq_lock = value;
 
@@ -1060,16 +1060,19 @@ static ssize_t cpufreq_lock_write( struct device *dev,
 				case 2:
 					cpufreq_label = 1000;
 					break;
+				case 3:
+					cpufreq_label = 1200;
+					break;
 				default:
 					cpufreq_label = 800;
 					break;
 			}
-			pr_info( "[Touch CPUFreq] - value: %dMHz\n", cpufreq_label );
+			pr_info( "[TSP] clock value: %dMHz\n", cpufreq_label );
 		} else {
-			pr_info( "%s: invalid input range %u\n", __FUNCTION__, value );
+			printk(KERN_ERR "%s: invalid interval [400|800|1G|1.2G]:  %u\n", __FUNCTION__, value );
 		}
 	} else {
-		pr_info( "%s: invalid input: \n", __FUNCTION__ );
+		printk(KERN_ERR "[TSP] %s: invalid input: \n", __FUNCTION__ );
 	}
 	return size;
 }
@@ -1137,6 +1140,9 @@ static void qt602240_input_read(struct qt602240_data *data)
 					break;
 				case 2:
 					s5pv210_lock_dvfs_high_level(DVFS_LOCK_TOKEN_7, L0); // 1000MHz
+					break;
+				case 3:
+					s5pv210_lock_dvfs_high_level(DVFS_LOCK_TOKEN_7, OC0); // 1200MHz
 					break;
 				default:
 					s5pv210_lock_dvfs_high_level(DVFS_LOCK_TOKEN_7, L1); // 800MHz
