@@ -598,4 +598,11 @@ config PN544
 	help
 	  NXP PN544 Near Field Communication controller support.
 
+config FAST_CHARGE
+	bool "Enable AC charge mode at will"
+	default y
+	help
+	  A simple sysfs interface to enable adapters that
+	  are detected as USB to charge as AC.
+
 endif # MISC_DEVICES

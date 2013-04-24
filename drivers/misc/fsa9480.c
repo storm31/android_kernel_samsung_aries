@@ -32,6 +32,9 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/delay.h>
+#ifdef CONFIG_FAST_CHARGE
+#include <linux/fast_charge.h>
+#endif
 
 /* FSA9480 I2C registers */
 #define FSA9480_REG_DEVID		0x01
@@ -379,7 +382,15 @@ static void fsa9480_detect_dev(struct fsa9480_usbsw *usbsw)
 			if(pdata->set_usb_switch)
 				pdata->set_usb_switch();
 			if (pdata->usb_cb)
+#ifdef CONFIG_FAST_CHARGE
+		        if ( enable_fast_charge == 1 ) {
+                    pdata->charger_cb(FSA9480_ATTACHED);
+                } else {
+                    pdata->usb_cb(FSA9480_ATTACHED);
+                }
+#else
                 pdata->usb_cb(FSA9480_ATTACHED);
+#endif
 			if (local_usbsw->mansw) {
 				ret = i2c_smbus_write_byte_data(client,
 					FSA9480_REG_MANSW1, local_usbsw->mansw);
