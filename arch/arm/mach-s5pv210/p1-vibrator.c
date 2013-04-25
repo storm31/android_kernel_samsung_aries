@@ -17,8 +17,9 @@
 
 #include <linux/hrtimer.h>
 #include <linux/err.h>
-#include <linux/gpio.h>
 #include <linux/pwm.h>
+#include <plat/gpio-cfg.h>
+#include <linux/gpio.h>
 #include <linux/wakelock.h>
 #include <linux/clk.h>
 #include <linux/workqueue.h>
@@ -27,7 +28,6 @@
 #include <asm/mach-types.h>
 
 #include <../../../drivers/staging/android/timed_output.h>
-#include <mach/gpio-p1.h>
 
 #include <linux/device.h>
 #include <linux/miscdevice.h>
@@ -165,7 +165,7 @@ static void p1_vibrator_work(struct work_struct *work)
 		s3c_gpio_cfgpin(VIB_PWM, S3C_GPIO_OUTPUT);
 		if (regulator_is_enabled(regulator_motor))
 			regulator_force_disable(regulator_motor);
-		gpio_direction_output(VIB_EN, GPIO_LEVEL_LOW);
+		gpio_direction_output(VIB_EN, 0);
 		vibdata.running = false;
 	} else {
 		if (vibdata.running)
@@ -179,7 +179,7 @@ static void p1_vibrator_work(struct work_struct *work)
 			regulator_enable(regulator_motor);
 		pwm_config(vibdata.pwm_dev, pwm_duty_value, PWM_PERIOD);
 		pwm_enable(vibdata.pwm_dev);
-		gpio_direction_output(VIB_EN, GPIO_LEVEL_HIGH);
+		gpio_direction_output(VIB_EN, 1);
 		vibdata.running = true;
 	}
 }
