@@ -7332,7 +7332,7 @@ static void __init p1_fixup(struct machine_desc *desc,
 
 	mi->bank[2].start = 0x50000000;
 	/* 1M for ram_console buffer */
-	mi->bank[2].size = 255 * SZ_1M;
+	mi->bank[2].size = 127 * SZ_1M;
 	mi->nr_banks = 3;
 
 	ram_console_start = mi->bank[2].start + mi->bank[2].size;
