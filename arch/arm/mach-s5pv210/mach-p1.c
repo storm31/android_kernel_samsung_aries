@@ -193,8 +193,6 @@ static int p1_notifier_call(struct notifier_block *this,
 	if ((code == SYS_RESTART) && _cmd) {
 		if (!strcmp((char *)_cmd, "recovery"))
 			mode = 2; // It's not REBOOT_MODE_RECOVERY, blame Samsung
-		else if (!strcmp((char *)_cmd, "download")) 
-			mode = REBOOT_MODE_DOWNLOAD;
 		else
 			mode = REBOOT_MODE_NONE;
 	}
@@ -7501,34 +7499,23 @@ static void p1_pm_restart(char mode, const char *cmd)
 
 // Ugly hack to inject parameters (e.g. device serial, bootmode) into /proc/cmdline
 static void __init p1_inject_cmdline(void) {
-	char* new_command_line = NULL;
-	char* bootmode = NULL;
-	int cmd_line_size = strlen(boot_command_line);
+	char *new_command_line;
+	int bootmode = __raw_readl(S5P_INFORM6);
+	int size;
 
-	/* Samsung value for recovery */
-	if(__raw_readl(S5P_INFORM6) == 2) {
-		new_command_line = kmalloc(cmd_line_size + 40 + 11, GFP_KERNEL);
-		bootmode = "bootmode=2";
-	} else if(__raw_readl(S5P_INFORM5)) {
-		new_command_line = kmalloc(cmd_line_size + 40 + 17, GFP_KERNEL);
-		bootmode = "bootmode=charger";
-	} else {
-		new_command_line = kmalloc(cmd_line_size + 40, GFP_KERNEL);
-		bootmode = "";
+	size = strlen(boot_command_line);
+	new_command_line = kmalloc(size + 40 + 11, GFP_KERNEL);
+	strcpy(new_command_line, saved_command_line);
+	size += sprintf(new_command_line + size, " androidboot.serialno=%08X%08X",
+				system_serial_high, system_serial_low);
+
+	// Only write bootmode when less than 10 to prevent confusion with watchdog
+	// reboot (0xee = 238)
+	if (bootmode < 10) {
+		size += sprintf(new_command_line + size, " bootmode=%d", bootmode);
 	}
 
-	strcpy(new_command_line, saved_command_line);
-	sprintf(new_command_line + cmd_line_size,
-			" androidboot.serialno=%08X%08X %s",
-			system_serial_high, system_serial_low, bootmode);
 	saved_command_line = new_command_line;
-}
-
-static void __init onenand_init()
-{
-	struct clk *clk = clk_get(NULL, "onenand");
-	BUG_ON(!clk);
-	clk_enable(clk);
 }
 
 static void __init p1_machine_init(void)
@@ -7672,7 +7659,6 @@ static void __init p1_machine_init(void)
 
 	qt_touch_init();
 
-	onenand_init();
 
 #if defined (CONFIG_SAMSUNG_P1L)
 	nmi_i2s_cfg_gpio_init();
@@ -7688,6 +7674,12 @@ static void __init p1_machine_init(void)
 #ifdef CONFIG_30PIN_CONN
 	platform_device_register(&sec_device_connector);
 #endif
+
+	/* write something into the INFORM6 register that we can use to
+	 * differentiate an unclear reboot from a clean reboot (which
+	 * writes a small integer code to INFORM6).
+	 */
+	__raw_writel(0xee, S5P_INFORM6);
 }
 
 #ifdef CONFIG_USB_SUPPORT
