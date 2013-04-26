@@ -105,7 +105,6 @@
 #include <linux/i2c/l3g4200d.h>
 #include <../../../drivers/input/misc/bma020.h>
 #include <../../../drivers/video/samsung/s3cfb.h>
-#include <linux/input/mxt224.h>
 #include <linux/max17042_battery.h>
 #include <linux/switch.h>
 
@@ -470,6 +469,10 @@ static struct s5p_media_device p1_media_devs[] = {
 #ifdef CONFIG_CPU_FREQ
 static struct s5pv210_cpufreq_voltage smdkc110_cpufreq_volt[] = {
 	{
+		.freq	= 1300000,
+		.varm	= 1450000,
+		.vint	= 1200000,
+	}, {
 		.freq	= 1200000,
 		.varm	= 1450000,
 		.vint	= 1200000,
