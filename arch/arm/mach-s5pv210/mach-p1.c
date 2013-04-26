@@ -125,7 +125,7 @@
 #include <linux/kernel_sec_common.h>
 #endif
 
-#include "p1.h"
+extern void s3c_setup_uart_cfg_gpio(unsigned char port);
 
 #undef pr_debug
 #define pr_debug pr_info
@@ -306,7 +306,6 @@ static struct s3c2410_uartcfg p1_uartcfgs[] __initdata = {
 		.ucon		= S5PV210_UCON_DEFAULT,
 		.ulcon		= S5PV210_ULCON_DEFAULT,
 		.ufcon		= S5PV210_UFCON_DEFAULT,
-		.wake_peer	= p1_bt_uart_wake_peer,
 	},
 	{
 		.hwport		= 1,
@@ -1266,12 +1265,6 @@ void lcd_cfg_gpio_late_resume(void)
 	s3c_gpio_setpull(GPIO_DIC_ID, S3C_GPIO_PULL_NONE);
 }
 EXPORT_SYMBOL(lcd_cfg_gpio_late_resume);
-
-#define LCD_BUS_NUM     3
-#define DISPLAY_CS      S5PV210_MP01(1)
-#define SUB_DISPLAY_CS  S5PV210_MP01(2)
-#define DISPLAY_CLK     S5PV210_MP04(1)
-#define DISPLAY_SI      S5PV210_MP04(3)
 
 #ifdef CONFIG_30PIN_CONN
 struct platform_device sec_device_connector = {
@@ -7593,10 +7586,10 @@ static void __init p1_machine_init(void)
 
 #ifdef CONFIG_FB_S3C_LVDS
 #if defined(CONFIG_FB_S3C_CMC623)
-		platform_device_register(&cmc623_pwm_backlight);
+	platform_device_register(&cmc623_pwm_backlight);
 #endif
-		platform_device_register(&sec_device_lms700);
-		s3cfb_set_platdata(&lvds_data);
+	platform_device_register(&sec_device_lms700);
+	s3cfb_set_platdata(&lvds_data);
 #endif
 
 #if defined(CONFIG_S5P_ADC)
