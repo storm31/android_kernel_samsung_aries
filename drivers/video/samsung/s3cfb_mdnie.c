@@ -196,13 +196,13 @@ mDNIe_data_type mDNIe_UI[]=
 	{0x00D0, 0x00C0},
 	{0x0100, 0x0000},
 #else //CONFIG_MACH_P1 //Bypass
-	{0x0084, 0x0000},
-	{0x0090, 0x0000},
-	{0x0094, 0x0fff},
-	{0x0098, 0x005c},
-	{0x009C, 0x0010},
-	{0x00AC, 0x0000},
-	{0x00B4, 0x03ff},
+	{0x0084, 0x0000}, // HDTR
+	{0x0090, 0x0000}, // DeConTh off
+	{0x0094, 0x0FFF}, // DirTh off
+	{0x0098, 0x005C}, // SimplTh off
+	{0x009C, 0x0012}, // 0x0012,  DE CEonoff CEdark AMOLED ---- 0000 000|0| 000|0
+	{0x00AC, 0x0000}, // 0x0280,  skinoff CSoff
+	{0x00B4, 0x03FF}, // 0x03FF,  DETh ---- --00 0000 0000
 #endif
 	{END_SEQ, 0x0000},
 };
@@ -1352,9 +1352,11 @@ void s5p_mdine_pwm_enable(int on)
 
 	if(on)
 		{
+#ifdef CONFIG_MACH_ARIES
 		data = s3c_mdnie_readw(0x0084);
 		data = data | 0x0010;
 		s3c_mdnie_writel(data,0x0084);		// on
+#endif
 
 		s3c_mdnie_writel(0x0000,0x0198);	// CABC disable
 
