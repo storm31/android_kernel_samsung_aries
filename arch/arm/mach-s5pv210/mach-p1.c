@@ -7431,10 +7431,14 @@ static unsigned int p1_get_hwrev(void)
 			sprintf(model_str, "P2");
 			break;
 		case 2:
-#if defined(CONFIG_PHONE_P1_GSM)
+#if defined(CONFIG_SAMSUNG_P1)
 			sprintf(model_str, "P1");
-#elif defined(CONFIG_PHONE_P1_CDMA)
+#elif defined(CONFIG_SAMSUNG_P1C)
 			sprintf(model_str, "P1C");
+#elif defined(CONFIG_SAMSUNG_P1L)
+			sprintf(model_str, "P1L");
+#elif defined(CONFIG_SAMSUNG_P1N)
+			sprintf(model_str, "P1N");
 #endif
 			break;
 		case 3:
@@ -7752,10 +7756,14 @@ void usb_host_phy_off(void)
 EXPORT_SYMBOL(usb_host_phy_off);
 #endif
 
-#if defined(CONFIG_PHONE_P1_GSM)
+#if defined(CONFIG_SAMSUNG_P1)
 MACHINE_START(P1, "P1")
-#elif defined(CONFIG_PHONE_P1_CDMA)
+#elif defined(CONFIG_SAMSUNG_P1C)
 MACHINE_START(P1, "P1C")
+#elif defined(CONFIG_SAMSUNG_P1L)
+MACHINE_START(P1, "P1L")
+#elif defined(CONFIG_SAMSUNG_P1N)
+MACHINE_START(P1, "P1N")
 #endif
 	.boot_params	= S5P_PA_SDRAM + 0x100,
 	.fixup		= p1_fixup,
