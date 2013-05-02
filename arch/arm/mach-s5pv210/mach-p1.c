@@ -3151,7 +3151,7 @@ static void __init qt_touch_init(void)
     s3c_gpio_setpull(gpio, S3C_GPIO_PULL_UP);
 }
 
-#if defined (CONFIG_SAMSUNG_P1L)
+#if defined (CONFIG_VIDEO_NM6XX)
 static void __init nmi_i2s_cfg_gpio_init(void)
 {
 	s3c_gpio_cfgpin(GPIO_I2S_SCLK_18V, S3C_GPIO_SFN(0x4));
@@ -3164,7 +3164,7 @@ static void __init nmi_i2s_cfg_gpio_init(void)
 	s3c_gpio_setpull(GPIO_I2S_LRCLK_18V, S3C_GPIO_PULL_NONE);
 	s3c_gpio_setpull(GPIO_I2S_DATA_18V, S3C_GPIO_PULL_NONE);
 }
-#elif defined (CONFIG_SAMSUNG_P1N)
+#elif defined (CONFIG_SAMSUNG_P1L) || defined (CONFIG_SAMSUNG_P1N)
 static void __init nmi_pwr_disable(void)
 {
 	int err = 0;
@@ -7210,7 +7210,7 @@ static struct platform_device *p1_devices[] __initdata = {
 	&p1_s3c_device_i2c9,  /* max1704x:fuel_guage */
 	&p1_s3c_device_i2c11,  /* smb136:charger-ic */
 	&p1_s3c_device_i2c13, /*cmc623 mdnie */
-#if defined (CONFIG_SAMSUNG_P1L)  && defined (CONFIG_VIDEO_NM6XX)
+#if defined (CONFIG_VIDEO_NM6XX)
 	&p1_s3c_device_i2c15, /* nmi625  */
 #endif
 	&sec_device_switch,  // samsung switch driver
@@ -7656,9 +7656,9 @@ static void __init p1_machine_init(void)
 	qt_touch_init();
 
 
-#if defined (CONFIG_SAMSUNG_P1L)
+#if defined (CONFIG_VIDEO_NM6XX)
 	nmi_i2s_cfg_gpio_init();
-#elif defined (CONFIG_SAMSUNG_P1N)
+#elif defined (CONFIG_SAMSUNG_P1L) || defined (CONFIG_SAMSUNG_P1N)
 	nmi_pwr_disable();  // Disable the ISDBT PWR : Only Latin HW 0.3
 #endif
 
