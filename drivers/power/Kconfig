@@ -167,6 +167,13 @@ config BATTERY_MAX17042
 	  multi-function devices that include fuel gauages that are compatible
 	  with MAX17042.
 
+config CHARGER_SMB136
+	tristate "Summit SMB136 Charger"
+	depends on I2C
+	help
+	  The SMB136 is a programmable single-cell lithium-ion/lithium-polymer battery charger
+	  designed for a variety of partable applications.
+
 config BATTERY_Z2
 	tristate "Z2 battery driver"
 	depends on I2C && MACH_ZIPIT2
