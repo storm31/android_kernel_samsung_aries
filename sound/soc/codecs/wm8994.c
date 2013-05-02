@@ -355,7 +355,7 @@ static int wm8994_set_path(struct snd_kcontrol *kcontrol,
 		DEBUG_LOG("routing to %s\n", mc->texts[path_num]);
 		wm8994->ringtone_active = OFF;
 		path_num -= 4;
-		break;	
+		break;
 	case HDMI_TV_OUT:
 	case HDMI_SPK:
 	case HDMI_DUAL:

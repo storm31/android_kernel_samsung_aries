@@ -1,5 +1,5 @@
 ﻿/*
- * wm8994_aries.c  --  WM8994 ALSA Soc Audio driver related Aries
+ * wm8994_p1.c  --  WM8994 ALSA Soc Audio driver related Aries
  *
  *  Copyright (C) 2010 Samsung Electronics.
  *
