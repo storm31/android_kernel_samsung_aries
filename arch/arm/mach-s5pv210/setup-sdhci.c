@@ -95,6 +95,9 @@ void s5pv210_setup_sdhci_cfg_card(struct platform_device *dev,
 				ctrl3 |= S3C_SDHCI_CTRL3_FCSELRX_BASIC;
 			//else
 			//	ctrl3 |= S3C_SDHCI_CTRL3_FCSELRX_INVERT;
+		} else if (machine_is_p1() && dev->id == 2) {
+			ctrl3 = S3C_SDHCI_CTRL3_FCSELTX_BASIC |
+				S3C_SDHCI_CTRL3_FCSELRX_BASIC;
 		} else
 			ctrl3 = S3C_SDHCI_CTRL3_FCSELTX_BASIC |
 				S3C_SDHCI_CTRL3_FCSELRX_INVERT;
@@ -154,6 +157,11 @@ void universal_sdhci2_cfg_ext_cd(void)
 #if defined(CONFIG_SAMSUNG_CAPTIVATE) || defined(CONFIG_SAMSUNG_VIBRANT)
     s3c_gpio_setpull(S5PV210_GPH3(4), S3C_GPIO_PULL_UP);
 #else
+#if defined(CONFIG_PHONE_P1_GSM)
+	s3c_gpio_cfgpin(GPIO_T_FLASH_DETECT, S3C_GPIO_SFN(GPIO_T_FLASH_DETECT_AF));
+#elif defined(CONFIG_PHONE_P1_CDMA)
+	s3c_gpio_cfgpin(S5PV210_GPH3(4),S3C_GPIO_SFN(0xf));
+#endif
     s3c_gpio_setpull(S5PV210_GPH3(4), S3C_GPIO_PULL_NONE);
 #endif
 	irq_set_irq_type(IRQ_EINT(28), IRQ_TYPE_EDGE_BOTH);
