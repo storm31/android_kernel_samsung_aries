@@ -153,7 +153,7 @@ static inline u32 fimc_irq_out_single_buf(struct fimc_control *ctrl,
 		ctx->status = FIMC_STREAMOFF;
 #ifdef CONFIG_MACH_ARIES
 		ctrl->status = FIMC_STREAMOFF;
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 		ctrl->status = FIMC_STREAMON_IDLE;
 #endif
 
@@ -265,7 +265,7 @@ static inline u32 fimc_irq_out_dma(struct fimc_control *ctrl,
 		ctx->status = FIMC_STREAMOFF;
 #ifdef CONFIG_MACH_ARIES
 		ctrl->status = FIMC_STREAMOFF;
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 		ctrl->status = FIMC_STREAMON_IDLE;
 #endif
 		return wakeup;
@@ -646,7 +646,7 @@ int fimc_mmap_out_dst(struct file *filp, struct vm_area_struct *vma, u32 idx)
 	vma->vm_flags |= VM_RESERVED;
 #ifdef CONFIG_MACH_ARIES
 	pfn = __phys_to_pfn(ctrl->out->ctx[ctx_id].dst[idx].base[0]);
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 #if defined (CONFIG_SAMSUNG_P1) || defined (CONFIG_SAMSUNG_P1C)
 	if (ctrl->out->ctx[ctx_id].dst[idx].base[0])
 		pfn = __phys_to_pfn(ctrl->out->ctx[ctx_id].dst[idx].base[0]);

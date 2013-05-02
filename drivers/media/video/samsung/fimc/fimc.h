@@ -39,7 +39,7 @@
 #define FIMC_INQUEUES		10
 #ifdef CONFIG_MACH_ARIES
 #define FIMC_MAX_CTXS		1
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 #define FIMC_MAX_CTXS		2
 #endif
 #define FIMC_TPID		3

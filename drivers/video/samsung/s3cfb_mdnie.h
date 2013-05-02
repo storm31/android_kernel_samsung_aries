@@ -331,7 +331,7 @@
 #define SIG_MDNIE_NAVI						5
 #ifdef CONFIG_MACH_ARIES
 #define SIG_MDNIE_BYPASS_MODE				6
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 #define SIG_MDNIE_DMB_MODE					6
 #define SIG_MDNIE_VT_MODE					7
 #define SIG_MDNIE_GALLERY_MODE				8

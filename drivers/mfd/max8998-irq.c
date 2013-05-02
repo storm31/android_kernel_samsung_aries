@@ -123,7 +123,7 @@ static void max8998_irq_sync_unlock(struct irq_data *data)
 			max8998->irq_masks_cache[i] = max8998->irq_masks_cur[i];
 #ifdef CONFIG_MACH_ARIES
 			max8998_write_reg(max8998->i2c, MAX8998_REG_IRQM1 + i,
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 			max8998_write_reg(max8998, MAX8998_REG_IRQM1 + i,
 #endif
 					max8998->irq_masks_cur[i]);
@@ -221,14 +221,14 @@ int max8998_irq_init(struct max8998_dev *max8998)
 		max8998->irq_masks_cache[i] = 0xff;
 #ifdef CONFIG_MACH_ARIES
 		max8998_write_reg(max8998->i2c, MAX8998_REG_IRQM1 + i, 0xff);
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 		max8998_write_reg(max8998, MAX8998_REG_IRQM1 + i, 0xff);
 #endif
 	}
 #ifdef CONFIG_MACH_ARIES
 	max8998_write_reg(max8998->i2c, MAX8998_REG_STATUSM1, 0xff);
 	max8998_write_reg(max8998->i2c, MAX8998_REG_STATUSM2, 0xff);
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
         max8998_write_reg(max8998, MAX8998_REG_STATUSM1, 0xff);
         max8998_write_reg(max8998, MAX8998_REG_STATUSM2, 0xff);
 #endif

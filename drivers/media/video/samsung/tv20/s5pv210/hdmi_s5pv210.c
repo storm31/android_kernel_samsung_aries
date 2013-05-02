@@ -60,7 +60,7 @@ spinlock_t	lock_hdmi;
 #define I2C_INT_CLEAR		(0<<4)
 #ifdef CONFIG_MACH_ARIES
 #define I2C_CLK			(0<<6)
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 #define I2C_CLK				(0x41)
 #endif
 #define I2C_CLK_PEND_INT		(I2C_CLK|I2C_INT_CLEAR|I2C_INT)
@@ -72,7 +72,7 @@ spinlock_t	lock_hdmi;
 #define I2C_MODE_MTX		(0x3<<6)
 #define I2C_MODE_MRX		(0x2<<6)
 #define I2C_MODE_SRX		(0x0<<6)
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 #define I2C_MODE_MTX			0xC0
 #define I2C_MODE_MRX			0x80
 #endif
@@ -1268,7 +1268,7 @@ static void __s5p_hdmi_audio_i2s_config(
 		~(3<<6 | 7<<3 | 1<<2 | 1<<1 | 1<<0))
 #ifdef CONFIG_MACH_ARIES
 		| (0<<6 | 0<<3 | 0<<2 | 0<<1 | 1<<0),
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 		| (0<<6 | 0<<3 | 0<<2 | 0<<1 | 0<<0),
 #endif
 		hdmi_base + S5P_HDMI_I2S_CH_ST_0);

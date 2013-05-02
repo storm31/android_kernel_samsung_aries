@@ -754,7 +754,7 @@ static bool check_samsung_charger(void)
 		    pr_info("%s: Improper charger is connected!!!\n", __func__);
 		    fsa9480_manual_switching(AUTO_SWITCH);
 		    return false;
-	    }	
+	    }
 #endif
     } //for ( i=0; i<3; i++)
 
@@ -893,13 +893,13 @@ update:
 		/* Update DISCHARGING status in case of USB cable or Improper charger */
 		if(chg->cable_status==CABLE_TYPE_USB || chg->bat_info.batt_improper_ta) {
 #ifdef CONFIG_FAST_CHARGE
-            if ( enable_fast_charge == 1 )
-                chg->bat_info.charging_status = POWER_SUPPLY_STATUS_CHARGING;
-            else
-    			chg->bat_info.charging_status = POWER_SUPPLY_STATUS_DISCHARGING;
+			if ( enable_fast_charge == 1 )
+				chg->bat_info.charging_status = POWER_SUPPLY_STATUS_CHARGING;
+			else
+				chg->bat_info.charging_status = POWER_SUPPLY_STATUS_DISCHARGING;
 #else
     			chg->bat_info.charging_status = POWER_SUPPLY_STATUS_DISCHARGING;
-#endif            
+#endif
         }
 	}
 

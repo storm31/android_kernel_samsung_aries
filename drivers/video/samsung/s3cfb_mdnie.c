@@ -94,7 +94,7 @@ typedef enum
 	mDNIe_NAVI,
 #ifdef CONFIG_MACH_ARIES
 	mDNIe_BYPASS_MODE,
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 	mDNIe_DMB_MODE,
 	mDNIe_VT_MODE,
 	mDNIe_GALLERY_MODE,
@@ -195,7 +195,7 @@ mDNIe_data_type mDNIe_UI[]=
 	{0x00C8, 0x008D},
 	{0x00D0, 0x00C0},
 	{0x0100, 0x0000},
-#else //CONFIG_MACH_P1 //Bypass
+#else // CONFIG_MACH_P1 //Bypass
 	{0x0084, 0x0000}, // HDTR
 	{0x0090, 0x0000}, // DeConTh off
 	{0x0094, 0x0FFF}, // DirTh off
@@ -753,7 +753,7 @@ static ssize_t mdnieset_ui_file_cmd_show(struct device *dev,
 		case mDNIe_BYPASS_MODE:
 			mdnie_ui = 6;
 			break;
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 		case mDNIe_DMB_MODE:
 			mdnie_ui = 6;
 			break;
@@ -808,7 +808,7 @@ static ssize_t mdnieset_ui_file_cmd_store(struct device *dev,
 		case SIG_MDNIE_BYPASS_MODE:
 			current_mDNIe_UI = mDNIe_BYPASS_MODE;
 			break;
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 		case SIG_MDNIE_DMB_MODE:
 			current_mDNIe_UI = mDNIe_DMB_MODE;
 			break;

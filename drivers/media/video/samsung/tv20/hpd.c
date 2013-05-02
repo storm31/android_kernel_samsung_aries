@@ -151,7 +151,7 @@ int s5p_hpd_set_eint(void)
 		irq_set_irq_type(IRQ_EINT13, IRQ_TYPE_EDGE_FALLING);
 	else
 		irq_set_irq_type(IRQ_EINT13, IRQ_TYPE_EDGE_RISING);
-	
+
 	s3c_gpio_set_drvstrength(S5PV210_GPH1(5), S3C_GPIO_DRVSTR_4X);
 
 	printk(KERN_INFO "\n++ s5p_hpd_set_eint\n");
@@ -316,7 +316,7 @@ static void hpd_irq_check_timer_func(unsigned long dummy)
 	unsigned long flags;
 
 	//printk("[TVOUT][%s:called]\n",__func__);
-	
+
 	if (irq_event ==EVENT_RISING && !gpio_get_value(S5PV210_GPH1(5))) {
 		printk("[TVOUT][%s:re-call irq handler]\n",__func__);
 		//local_irq_save(flags);

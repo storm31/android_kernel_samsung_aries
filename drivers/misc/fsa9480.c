@@ -371,7 +371,7 @@ static void fsa9480_detect_dev(struct fsa9480_usbsw *usbsw)
 	val2 = device_type >> 8;
 #ifdef CONFIG_MACH_ARIES
 	dev_info(&client->dev, "dev1: 0x%x, dev2: 0x%x\n", val1, val2);
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 	dev_info(&client->dev, "prev_dev1: 0x%x, prev_dev2: 0x%x\n", usbsw->dev1, usbsw->dev2);
 	dev_info(&client->dev, "new_dev1: 0x%x, new_dev2: 0x%x\n", val1, val2);
 #endif
@@ -386,7 +386,7 @@ static void fsa9480_detect_dev(struct fsa9480_usbsw *usbsw)
 			if (usbsw->mansw) {
 				ret = i2c_smbus_write_byte_data(client,
 					FSA9480_REG_MANSW1, usbsw->mansw);
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 		if (val1 & DEV_T1_USB_MASK /*|| (val2 & DEV_T2_USB_MASK)*/) { // Remove Jig USB
 			if(pdata->set_usb_switch)
 				pdata->set_usb_switch();
@@ -403,7 +403,7 @@ static void fsa9480_detect_dev(struct fsa9480_usbsw *usbsw)
 			if (local_usbsw->mansw) {
 				ret = i2c_smbus_write_byte_data(client,
 					FSA9480_REG_MANSW1, local_usbsw->mansw);
-#endif //CONFIG_MACH_P1
+#endif // CONFIG_MACH_P1
 				if (ret < 0)
 					dev_err(&client->dev,
 						"%s: err %d\n", __func__, ret);
@@ -412,7 +412,7 @@ static void fsa9480_detect_dev(struct fsa9480_usbsw *usbsw)
 		} else if (val1 & DEV_T1_UART_MASK || val2 & DEV_T2_UART_MASK) {
 			if (pdata->uart_cb)
 				pdata->uart_cb(FSA9480_ATTACHED);
-
+#ifdef CONFIG_MACH_ARIES
 			if (usbsw->mansw) {
 				ret = i2c_smbus_write_byte_data(client,
 					FSA9480_REG_MANSW1, SW_UART);
@@ -420,6 +420,7 @@ static void fsa9480_detect_dev(struct fsa9480_usbsw *usbsw)
 					dev_err(&client->dev,
 						"%s: err %d\n", __func__, ret);
 			}
+#endif
 		/* CHARGER */
 		} else if (val1 & DEV_T1_CHARGER_MASK) {
 			if (pdata->charger_cb)
@@ -508,7 +509,7 @@ static void fsa9480_detect_dev(struct fsa9480_usbsw *usbsw)
 #ifdef CONFIG_MACH_ARIES
 		if (usbsw->dev1 & DEV_T1_USB_MASK ||
 				usbsw->dev2 & DEV_T2_USB_MASK) {
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 		if (usbsw->dev1 & DEV_T1_USB_MASK
 				/*|| usbsw->dev2 & DEV_T2_USB_MASK*/ ) {  // Remove Jig USB
 #endif

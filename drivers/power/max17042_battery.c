@@ -313,18 +313,18 @@ static int max17042_i2c_read(struct i2c_client *client, u8 reg, u8 *data, u8 len
 	value = i2c_smbus_read_i2c_block_data(client, (u8)reg, length, data);
 	if (value < 0)
 		pr_err("%s: Failed to max17042_i2c_read\n", __func__);
-	
+
 	return 0;
 }
 
 static int max17042_i2c_write(struct i2c_client *client, u8 reg, u8 *data, u8 length)  // note : block read.
 {
 	u16 value;
-		
+
 	value = i2c_smbus_write_i2c_block_data(client, (u8)reg, length, data);
 	if (value < 0)
 		pr_err("%s: Failed to max17042_i2c_write\n", __func__);
-	
+
 	return 0;
 }
 
@@ -382,13 +382,13 @@ int fg_write_16register(u8 addr, u16* w_data)
 	struct i2c_client *client = max17042_fg->client;
 	u8 data[32];
 	u32 i;
-	
+
 	for(i=0; i<16; i++) {
 		data[2*i] = w_data[i] & 0xFF;
 		data[2*i + 1] = (w_data[i] >> 8);
 //		printk("%s - addr(0x%02x), w_data(0x%04x)\n", __func__, (addr + i), (data[2*i + 1] << 8) | data[2*i]);
 	}
-	
+
 	if (max17042_i2c_write(client, addr, data, (u8)32) < 0) {
 		pr_err("%s: Failed to read addr(0x%x)\n", __func__, addr);
 		return -1;
@@ -489,7 +489,7 @@ relock:
 			goto relock;
 		}
 	}
-	
+
 }
 
 bool max17042_check_battery_present(void)
@@ -497,7 +497,7 @@ bool max17042_check_battery_present(void)
 	struct i2c_client *client = max17042_fg->client;
 	u8 status_data[2];
 	bool ret = true;
-	
+
 	if(!fuel_guage_init) {
 		printk("%s : fuel guage IC is not initialized!!\n", __func__);
 		return -1;
@@ -845,7 +845,7 @@ int max17042_get_avg_current(struct i2c_client *client)
 		printk("%s : fuel guage IC is not initialized!!\n", __func__);
 		return 0;
 	}
-	
+
 	if (max17042_i2c_read(client, AVG_CURRENT_REG, data2, (u8)2) < 0) {
 		pr_err("%s: Failed to read AVERAGE CURRENT\n", __func__);
 		return 0;
@@ -862,7 +862,7 @@ int max17042_get_avg_current(struct i2c_client *client)
 
 	temp = temp * 15625;
 	avg_current = temp / 100000;
-	
+
 	if(sign)
 		avg_current *= -1;
 
@@ -896,7 +896,7 @@ int max17042_reset_soc(struct max17042_chip *chip)
 
 	// cycle 0
 	fg_write_register(0x17, (u16)(0x0));
-	
+
 	if (max17042_i2c_read(client, MISCCFG_REG, data, (u8)2) < 0) {
 		pr_err("%s: Failed to read MiscCFG\n", __func__);
 		return -1;
@@ -994,7 +994,7 @@ int max17042_check_chip_state(struct i2c_client *client)
 	soc = max17042_get_soc(client);
 
 	//printk("%s : vcell(%d), soc(%d)\n", __func__, vcell, soc);
-	
+
 	// if read operation fails, then it's not alive status
 	if( (vcell < 0) || (soc < 0) )
 		return 0;
@@ -1079,7 +1079,7 @@ void max17042_adjust_low_batt_level(int level)
 	//2) RemCapMix(0Fh) = RemCapREP
 //	fg_write_register(0x0f, (u16)temp);
 
-	//3) RemCapAV(1Fh) = RemCapREP; 
+	//3) RemCapAV(1Fh) = RemCapREP;
 //	fg_write_register(0x1f, (u16)temp);
 
 	//4) RepSOC (06h) = 3.4% or 1.4%
@@ -1089,8 +1089,8 @@ void max17042_adjust_low_batt_level(int level)
 	//5) MixSOC (0Dh) = RepSOC
 	fg_write_register(0x0D, tempVal);
 
-	//6) AVSOC (0Eh) = RepSOC; 
-	fg_write_register(0x0E, tempVal);	
+	//6) AVSOC (0Eh) = RepSOC;
+	fg_write_register(0x0E, tempVal);
 
 	low_batt_comp_flag = 1;  // Set flag
 
@@ -1176,28 +1176,28 @@ static int max17042_get_low_batt_threshold(int range, int level, int nCurrent)
 			else if(level == 3)
 				ret = SDI_Range4_3_Offset + ((nCurrent * SDI_Range4_3_Slope) / 1000);
 			break;
-		
+
 		case 3:
 			if(level == 1)
 				ret = SDI_Range3_1_Offset + ((nCurrent * SDI_Range3_1_Slope) / 1000);
 			else if(level == 3)
 				ret = SDI_Range3_3_Offset + ((nCurrent * SDI_Range3_3_Slope) / 1000);
 			break;
-		
+
 		case 2:
 			if(level == 1)
 				ret = SDI_Range2_1_Offset + ((nCurrent * SDI_Range2_1_Slope) / 1000);
 			else if(level == 3)
 				ret = SDI_Range2_3_Offset + ((nCurrent * SDI_Range2_3_Slope) / 1000);
 			break;
-		
+
 		case 1:
 			if(level == 1)
 				ret = SDI_Range1_1_Offset + ((nCurrent * SDI_Range1_1_Slope) / 1000);
 			else if(level == 3)
 				ret = SDI_Range1_3_Offset + ((nCurrent * SDI_Range1_3_Slope) / 1000);
 			break;
-		
+
 		default:
 			break;
 		}
@@ -1218,33 +1218,33 @@ static int max17042_get_low_batt_threshold(int range, int level, int nCurrent)
 			else if(level == 3)
 				ret = ATL_Range4_3_Offset + ((nCurrent * ATL_Range4_3_Slope) / 100000);  // Slope value range is different
 			break;
-		
+
 		case 3:
 			if(level == 1)
 				ret = ATL_Range3_1_Offset + ((nCurrent * ATL_Range3_1_Slope) / 1000);
 			else if(level == 3)
 				ret = ATL_Range3_3_Offset + ((nCurrent * ATL_Range3_3_Slope) / 1000);
 			break;
-		
+
 		case 2:
 			if(level == 1)
 				ret = ATL_Range2_1_Offset + ((nCurrent * ATL_Range2_1_Slope) / 1000);
 			else if(level == 3)
 				ret = ATL_Range2_3_Offset + ((nCurrent * ATL_Range2_3_Slope) / 1000);
 			break;
-		
+
 		case 1:
 			if(level == 1)
 				ret = ATL_Range1_1_Offset + ((nCurrent * ATL_Range1_1_Slope) / 1000);
 			else if(level == 3)
 				ret = ATL_Range1_3_Offset + ((nCurrent * ATL_Range1_3_Slope) / 1000);
 			break;
-		
+
 		default:
 			break;
 		}
 	}
-	
+
 	//printk("%s : Range%d, Level%d, Current(%d) -> Threshold(%d)\n", __func__, range, level, nCurrent, ret);
 
 	return ret;
@@ -1276,7 +1276,7 @@ static void max17042_low_batt_work_handler(struct work_struct *work)
 				bCntReset=1;
 		}
 		else if(fg_min_current >= -1250 && fg_min_current < -750)  // 0.75A < I <= 1.25A
-		{		
+		{
 			if(fg_soc >= 2 && fg_vcell < max17042_get_low_batt_threshold(3, 1, fg_min_current)) {  // 1%
 				max17042_add_low_batt_comp_cnt(3, 1);
 			}
@@ -1334,7 +1334,7 @@ static void max17042_low_batt_work_handler(struct work_struct *work)
 				bCntReset=1;
 		}
 		else if(fg_min_current >= -700 && fg_min_current < -500)  // 0.5A < I <= 0.7A
-		{		
+		{
 			if(fg_soc >= 2 && fg_vcell < max17042_get_low_batt_threshold(3, 1, fg_min_current)) {  // 1%
 				max17042_add_low_batt_comp_cnt(3, 1);
 			}
@@ -1412,7 +1412,7 @@ void max17042_full_charge_compensation(
 	struct max17042_callbacks *ptr, u32 is_recharging, u32 pre_update)
 {
 	static u16 NewFullCap_data = 0;
-	
+
 	if(!fuel_guage_init) {
 		printk("%s : fuel guage IC is not initialized!!\n", __func__);
 		return ;
@@ -1461,9 +1461,9 @@ void max17042_full_charge_compensation(
 		{
 			//printk("%s : [Case 3] PrevFullCap = 0x%04x, NewFullCap = 0x%04x\n",
 			//	__func__, PrevFullCap, NewFullCap_data);
-		
+
 			NewFullCap_data = (PrevFullCap * 90) / 100;
-		
+
 //			fg_write_register(REMCAP_MIX_REG, (u16)(NewFullCap_data));
 			fg_write_register(REMCAP_REP_REG, (u16)(NewFullCap_data));
 			fg_write_register(FULLCAP_REG, (u16)(NewFullCap_data));
@@ -1511,7 +1511,7 @@ void max17042_check_vf_fullcap_range(struct max17042_callbacks *ptr)
 {
 	static u16 NewVfFullCap = 0;
 	u16 print_flag = 1;
-	
+
 	if(!fuel_guage_init) {
 		printk("%s : fuel guage IC is not initialized!!\n", __func__);
 		return ;
@@ -1555,9 +1555,9 @@ void max17042_check_vf_fullcap_range(struct max17042_callbacks *ptr)
 		{
 			//printk("%s : [Case 3] PrevVfFullCap = 0x%04x, NewVfFullCap = 0x%04x\n",
 			//	__func__, PrevVfFullCap, NewVfFullCap);
-		
+
 			NewVfFullCap = (PrevVfFullCap * 90) / 100;
-		
+
 			fg_write_register(dQacc_REG, (u16)(NewVfFullCap / 4));
 			fg_write_register(dPacc_REG, (u16)0x3200);
 		}
@@ -1632,7 +1632,7 @@ int max17042_check_cap_corruption(struct max17042_callbacks *ptr)
 	// ocv calculation for print
 	temp = (VfOCV & 0xFFF) * 78125;
 	pr_vfocv = temp / 1000000;
-	
+
 	temp = ((VfOCV & 0xF000) >> 4) * 78125;
 	temp2 = temp / 1000000;
 	pr_vfocv += (temp2 << 4);
@@ -1881,8 +1881,8 @@ static int max17042_alert_init(void)
 		pr_err("%s: Failed to read MISCCFG_REG\n", __func__);
 		return -1;
 	}
-	misccgf_data[0] = misccgf_data[0] & ~(0x03);	
-	
+	misccgf_data[0] = misccgf_data[0] & ~(0x03);
+
 	if(max17042_i2c_write(client, MISCCFG_REG, misccgf_data, (u8)2))
 	{
 		pr_info("%s: Failed to write MISCCFG_REG\n", __func__);
@@ -1895,7 +1895,7 @@ static int max17042_alert_init(void)
 	if(max17042_i2c_write(client, SALRT_THRESHOLD_REG, salrt_data, (u8)2))
 	{
 		pr_info("%s: Failed to write SALRT_THRESHOLD_REG\n", __func__);
-		return -1;	
+		return -1;
 	}
 
 rewrite_valrt:
@@ -1931,20 +1931,20 @@ rewrite_talrt:
 	}
 
 	mdelay(100);
-	
+
 	// Enable SOC alerts
 	if (max17042_i2c_read(client, CONFIG_REG, config_data, (u8)2) < 0) {
 		pr_err("%s: Failed to read CONFIG_REG\n", __func__);
 		return -1;
 	}
-	config_data[0] = config_data[0] | (0x1 << 2);	
-	
+	config_data[0] = config_data[0] | (0x1 << 2);
+
 	if(max17042_i2c_write(client, CONFIG_REG, config_data, (u8)2))
 	{
 		pr_info("%s: Failed to write CONFIG_REG\n", __func__);
 		return -1;
 	}
-		
+
 	return 1;
 }
 
@@ -1953,7 +1953,7 @@ static bool max17042_check_status(void)
 	struct i2c_client *client = max17042_fg->client;
 	u8 status_data[2];
 	bool ret = false;
-	
+
 	if(!fuel_guage_init) {
 		printk("%s : fuel guage IC is not initialized!!\n", __func__);
 		return -1;
@@ -1977,7 +1977,7 @@ static bool max17042_check_status(void)
 		pr_info("%s: Failed to write STATUS_REG\n", __func__);
 		return -1;
 	}
-	
+
 	return ret;
 }
 

@@ -129,7 +129,7 @@ static struct s5pv210_dvs_conf dvs_conf[] = {
 		.int_volt   = 1000000,
 	},
 };
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 const unsigned long arm_volt_max = 1450000;
 const unsigned long int_volt_max = 1250000;
 
@@ -174,8 +174,10 @@ static u32 clkdiv_val[7][11] = {
 
 	/* OC1 : [1300/200/100][166/83][133/66][200/200] */
 	{0, 5, 5, 1, 3, 1, 4, 1, 3, 0, 0},
+
 	/* OC0 : [1200/200/100][166/83][133/66][200/200] */
 	{0, 5, 5, 1, 3, 1, 4, 1, 3, 0, 0},
+
 	/* L0 : [1000/200/100][166/83][133/66][200/200] */
 	{0, 4, 4, 1, 3, 1, 4, 1, 3, 0, 0},
 
@@ -682,7 +684,7 @@ static int __init s5pv210_cpu_init(struct cpufreq_policy *policy)
 
 #if CONFIG_MACH_ARIES
 	policy->cpuinfo.transition_latency = 40000;
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 	policy->cpuinfo.transition_latency = 100000; /* 1us */
 #endif
 

@@ -135,7 +135,7 @@ static void _s5p_vlayer_calc_inner_values(void)
 
 	if (o_mode == INTERLACED) {
 #ifdef CONFIG_MACH_P1
-		if (st->vl_op_mode.line_skip) { 
+		if (st->vl_op_mode.line_skip) {
 #endif
 			st->vl_src_height	= s_h / 2;
 			st->vl_src_offset_y	= s_oy / 2;

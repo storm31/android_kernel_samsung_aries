@@ -55,7 +55,7 @@ enum {
 	MAX8998_REG_BUCK1_VOLTAGE4,
 	MAX8998_REG_BUCK2_VOLTAGE1,
 	MAX8998_REG_BUCK2_VOLTAGE2,
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 	MAX8998_REG_BUCK1_DVSARM1,
 	MAX8998_REG_BUCK1_DVSARM2,
 	MAX8998_REG_BUCK1_DVSARM3,
@@ -333,7 +333,7 @@ extern int max8998_read_reg(struct i2c_client *i2c, u8 reg, u8 *dest);
 extern int max8998_write_reg(struct i2c_client *i2c, u8 reg, u8 value);
 extern int max8998_bulk_write(struct i2c_client *i2c, u8 reg, int count, u8 *buf);
 extern int max8998_update_reg(struct i2c_client *i2c, u8 reg, u8 val, u8 mask);
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 static inline int max8998_read_reg(struct max8998_dev *max8998, u8 reg, u8 *value)
 {
 	return max8998->dev_read(max8998, reg, value);

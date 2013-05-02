@@ -398,7 +398,8 @@ static struct s5p_media_device p1_media_devs[] = {
 		.memsize = S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC0,
 		.paddr = 0,
 	},
-/*	[3] = {
+/*
+	[3] = {
 		.id = S5P_MDEV_FIMC1,
 		.name = "fimc1",
 		.bank = 1,
@@ -7320,10 +7321,10 @@ static void __init p1_fixup(struct machine_desc *desc,
 	mi->bank[1].size = 256 * SZ_1M;
 
 	mi->bank[2].start = 0x50000000;
-	/* 1M for ram_console buffer */
 	mi->bank[2].size = 255 * SZ_1M;
 	mi->nr_banks = 3;
 
+	/* 1M for ram_console buffer */
 	ram_console_start = mi->bank[2].start + mi->bank[2].size;
 	ram_console_size = SZ_1M - SZ_4K;
 

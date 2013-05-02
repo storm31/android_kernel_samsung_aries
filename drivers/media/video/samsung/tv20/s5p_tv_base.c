@@ -566,7 +566,7 @@ int s5p_tv_v_release(struct file *filp)
 
 #if defined(CONFIG_CPU_S5PV210) && defined(CONFIG_PM)
 #ifdef CONFIG_MACH_P1
-	if ((s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_HDMI) || 
+	if ((s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_HDMI) ||
 		(s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_HDMI_RGB) ||
 		(s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_DVI))
 		tv_phy_power( false );
@@ -1200,7 +1200,7 @@ static int __devinit s5p_tv_probe(struct platform_device *pdev)
 #ifndef CONFIG_USER_ALLOC_TVOUT
 	s5p_tv_clk_gate(true);
 #ifdef CONFIG_MACH_P1
-	if ((s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_HDMI) || 
+	if ((s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_HDMI) ||
 		(s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_HDMI_RGB) ||
 		(s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_DVI))
 #endif
@@ -1394,7 +1394,7 @@ void s5p_tv_early_suspend(struct early_suspend *h)
 #ifdef CONFIG_MACH_ARIES
 		if ((s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_HDMI) ||
 		(s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_HDMI_RGB))
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 	    if ((s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_HDMI) ||
 			(s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_HDMI_RGB) ||
 			(s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_DVI))
@@ -1421,7 +1421,7 @@ void s5p_tv_late_resume(struct early_suspend *h)
 	mutex_lock(mutex_for_fo);
 	s5ptv_status.suspend_status = false;
 #ifdef CONFIG_MACH_P1
-	if ((s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_HDMI) || 
+	if ((s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_HDMI) ||
 		(s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_HDMI_RGB) ||
 		(s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_DVI))
 			s5p_handle_cable();
@@ -1441,7 +1441,7 @@ void s5p_tv_late_resume(struct early_suspend *h)
 #ifdef CONFIG_MACH_ARIES
 		if ((s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_HDMI) ||\
 		(s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_HDMI_RGB))
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 		if ((s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_HDMI) ||\
 		(s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_HDMI_RGB) ||\
 		(s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_DVI))

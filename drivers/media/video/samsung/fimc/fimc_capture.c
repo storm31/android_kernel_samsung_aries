@@ -43,7 +43,7 @@
 #ifdef CONFIG_MACH_ARIES
 static int vtmode = 0;
 static int device_id = 0;
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 int camera_back_check = 0;
 int camera_active_type = 0;
 #endif
@@ -301,7 +301,7 @@ static int fimc_camera_start(struct fimc_control *ctrl)
 	} else {
 #ifdef CONFIG_MACH_ARIES
 		if (vtmode == 1 && device_id != 0 && (ctrl->cap->rotate == 90 || ctrl->cap->rotate == 270)) {
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 		if ((ctrl->vt_mode == 1 || ctrl->vt_mode == 2)
 			&& (fimc->active_camera == CAMERA_ID_FRONT)
 			&& (ctrl->cap->rotate == 90 || ctrl->cap->rotate == 270)) {
@@ -315,7 +315,7 @@ static int fimc_camera_start(struct fimc_control *ctrl)
 #ifdef CONFIG_MACH_ARIES
 			dev_err(ctrl->dev, "vtmode = 1, rotate = %d, device = front, cam->width = %d, cam->height = %d\n", ctrl->cap->rotate, ctrl->cam->width, ctrl->cam->height);
 		} else if (device_id != 0 && vtmode != 1) {
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 			printk("line(%d):vtmode = %d, rotate = %d, device = front(%d), cam->width = %d, cam->height = %d\n", __LINE__, ctrl->vt_mode, ctrl->cap->rotate, fimc->active_camera, ctrl->cam->width, ctrl->cam->height);
 		} else if ((ctrl->vt_mode == 1 || ctrl->vt_mode == 2)
 				&& (fimc->active_camera == CAMERA_ID_BACK || fimc->active_camera == CAMERA_ID_MAX
@@ -821,7 +821,7 @@ int fimc_s_input(struct file *file, void *fh, unsigned int i)
 
 	return 0;
 
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 	if ((!camera_back_check) && (fimc->active_camera != 1)) {
 		do {
 			struct v4l2_control v_ctrl;
@@ -1805,7 +1805,7 @@ int fimc_streamon_capture(void *fh)
 	} else {
 #ifdef CONFIG_MACH_ARIES
 		if (vtmode == 1 && device_id != 0 && (cap->rotate == 90 || cap->rotate == 270)) {
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 		if ((ctrl->vt_mode == 1 || ctrl->vt_mode == 2)
 			&& (fimc->active_camera == CAMERA_ID_FRONT)
 			&& (ctrl->cap->rotate == 90 || ctrl->cap->rotate == 270)) {
@@ -1819,7 +1819,7 @@ int fimc_streamon_capture(void *fh)
 #ifdef CONFIG_MACH_ARIES
 			dev_err(ctrl->dev, "vtmode = 1, rotate = %d, device = front, cam->width = %d, cam->height = %d\n", cap->rotate, ctrl->cam->width, ctrl->cam->height);
 		} else if (device_id != 0 && vtmode != 1) {
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 			printk("line(%d):vtmode = %d, rotate = %d, device = front(%d), cam->width = %d, cam->height = %d\n", __LINE__, ctrl->vt_mode, ctrl->cap->rotate, fimc->active_camera, ctrl->cam->width, ctrl->cam->height);
 		} else if ((ctrl->vt_mode == 1 || ctrl->vt_mode == 2)
 				&& (fimc->active_camera == CAMERA_ID_BACK || fimc->active_camera == CAMERA_ID_MAX)
@@ -1843,7 +1843,7 @@ int fimc_streamon_capture(void *fh)
 			ctrl->cam->height =cam_frmsize.discrete.height;
 #ifdef CONFIG_MACH_ARIES
 			dev_err(ctrl->dev, "%s, crop(368x480), vtmode = 0, device = front, cam->width = %d, cam->height = %d\n", __func__, ctrl->cam->width, ctrl->cam->height);
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 			printk("line(%d):vtmode = %d, rotate = %d, device = front(%d), cam->width = %d, cam->height = %d\n", __LINE__, ctrl->vt_mode, ctrl->cap->rotate, fimc->active_camera, ctrl->cam->width, ctrl->cam->height);
 		} else if ((ctrl->vt_mode == 0)
 				&& (fimc->active_camera == CAMERA_ID_FRONT)
@@ -1876,7 +1876,7 @@ int fimc_streamon_capture(void *fh)
 #ifdef CONFIG_MACH_ARIES
 			ctrl->cam->width = ctrl->cam->window.width = cam_frmsize.discrete.width;
 			ctrl->cam->height = ctrl->cam->window.height = cam_frmsize.discrete.height;
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 			ctrl->cam->window.width = ctrl->cam->width;
 			ctrl->cam->window.height = ctrl->cam->height;
 			printk("line(%d):vtmode = %d, rotate = %d, device = %d, cam->width = %d, cam->height = %d\n", __LINE__, ctrl->vt_mode, ctrl->cap->rotate, fimc->active_camera, ctrl->cam->width, ctrl->cam->height);
@@ -1922,7 +1922,7 @@ int fimc_streamon_capture(void *fh)
 			ctrl->cap->rotate = 90;
 			dev_err(ctrl->dev, "%s, rotate 90", __func__);
 		}
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 		if ((fimc->active_camera == CAMERA_ID_FRONT) && (ctrl->vt_mode == 0)) {
 			ctrl->cap->rotate = 270;
 			dev_err(ctrl->dev, "%s, rotate 270", __func__);

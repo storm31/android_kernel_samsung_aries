@@ -598,8 +598,8 @@ unsigned short osr128_get_value(unsigned short val)
     if (debug_log(LOG_INFOS))
         printk("wm8994_extensions: %s %s %s %d\n",
                __func__,
-               dac_osr128 ? "dac_osr128" : "", 
-               adc_osr128 ? "adc_osr128" : "", 
+               dac_osr128 ? "dac_osr128" : "",
+               adc_osr128 ? "adc_osr128" : "",
                val);
 
 	return val;

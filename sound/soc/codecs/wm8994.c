@@ -386,7 +386,7 @@ static int wm8994_set_path(struct snd_kcontrol *kcontrol,
 	}
 
 
-	if (wm8994->testmode_config_flag == SEC_TEST_PBA_DUAL_SPK && 
+	if (wm8994->testmode_config_flag == SEC_TEST_PBA_DUAL_SPK &&
 		(path_num == HP || path_num == HP_NO_MIC)) {
 		DEBUG_LOG("SEC_TEST_PBA_DUAL_SPK : forced set path to SPK");
 		path_num = SPK;
@@ -412,28 +412,28 @@ static int wm8994_set_call_path(struct snd_kcontrol *kcontrol,
 	struct soc_enum *mc = (struct soc_enum *)kcontrol->private_value;
 
 	// Get path value
-	int path_num = ucontrol->value.integer.value[0];	
-	
+	int path_num = ucontrol->value.integer.value[0];
+
 	if(strcmp( mc->texts[path_num], voicecall_path[path_num]) )
-	{		
+	{
 		DEBUG_LOG_ERR("Unknown path %s", mc->texts[path_num] );
 		return -ENODEV;
 	}
-	
+
 	switch(path_num)
 	{
 		case PLAYBACK_OFF :
 			DEBUG_LOG("Switching off output path");
 			break;
-			
+
 		case SPK :
 		case RCV :
-		case HP:	
-		case HP_NO_MIC:	
+		case HP:
+		case HP_NO_MIC:
 		case BT :
 			DEBUG_LOG("routing  voice path to %s", mc->texts[path_num] );
 			break;
-		
+
 		default:
 			DEBUG_LOG_ERR("The audio path[%d] does not exists!!", path_num);
 			return -ENODEV;
@@ -449,7 +449,7 @@ static int wm8994_set_call_path(struct snd_kcontrol *kcontrol,
 	else
 	{
 		int val;
-		
+
 		val = wm8994_read(codec, WM8994_AIF1_DAC1_FILTERS_1);
 		val &= ~(WM8994_AIF1DAC1_MUTE_MASK);
 		val |= (WM8994_AIF1DAC1_UNMUTE);
@@ -518,7 +518,7 @@ static int wm8994_set_fmradio_path(struct snd_kcontrol *kcontrol,
 			wm8994_set_fmradio_speaker_mix(codec);
 		} else {
 			wm8994_write(codec,WM8994_AIF1_DAC1_FILTERS_1, WM8994_AIF1DAC1_UNMUTE);
-			DEBUG_LOG("FMR_MIX_SPK is already set!!! Skip path!!");				
+			DEBUG_LOG("FMR_MIX_SPK is already set!!! Skip path!!");
 		}
 		break;
 
@@ -545,13 +545,13 @@ static int wm8994_set_fmradio_path(struct snd_kcontrol *kcontrol,
 		return -ENODEV;
 		break;
 	}
-	
+
 	return 0;
 }
 
-static int wm8994_get_codec_tuning(struct snd_kcontrol *kcontrol, 
+static int wm8994_get_codec_tuning(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
-{	
+{
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 	struct wm8994_priv *wm8994 = snd_soc_codec_get_drvdata(codec);
 
@@ -561,7 +561,7 @@ static int wm8994_get_codec_tuning(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-static int wm8994_set_codec_tuning(struct snd_kcontrol *kcontrol, 
+static int wm8994_set_codec_tuning(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
@@ -576,7 +576,7 @@ static int wm8994_set_codec_tuning(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-static int wm8994_get_codec_status(struct snd_kcontrol *kcontrol, 
+static int wm8994_get_codec_status(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
 	return 0;
@@ -647,9 +647,9 @@ static int wm8994_set_codec_status(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-static int wm8994_get_voice_recording_ch(struct snd_kcontrol *kcontrol, 
+static int wm8994_get_voice_recording_ch(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
-{	
+{
 	return 0;
 }
 
@@ -660,7 +660,7 @@ static int wm8994_set_voice_recording_ch(struct snd_kcontrol *kcontrol,
 	struct wm8994_priv *wm8994 = snd_soc_codec_get_drvdata(codec);
 
 
-	int channel = ucontrol->value.integer.value[0];	
+	int channel = ucontrol->value.integer.value[0];
 
 	wm8994 ->call_record_ch = channel;
 
@@ -676,7 +676,7 @@ static int wm8994_set_voice_recording_ch(struct snd_kcontrol *kcontrol,
 	case CH_DOWNLINK:
 	case CH_UDLINK:
 		break;
-		
+
 	default :
 		break;
 	}
@@ -704,11 +704,11 @@ static int wm8994_set_voice_call_recording(struct snd_kcontrol *kcontrol,
 
 	switch (path_num) {
 	case CALL_RECORDING_OFF :
-		break;		   
+		break;
 	case CALL_RECORDING_MAIN :
-	case CALL_RECORDING_SUB :		
+	case CALL_RECORDING_SUB :
 		wm8994_set_voicecall_record(codec, (int)wm8994 ->call_record_ch);
-		break;		   
+		break;
 	default :
 		break;
 	}
@@ -1237,9 +1237,9 @@ static int wm8994_hw_params(struct snd_pcm_substream *substream,
 		wm8994_write(codec, WM8994_AIF1_BCLK, 0x70);
 #endif
 
-//TODO...we need to set proper BCLK & LRCLK to support different frequency songs..In modifying 
+//TODO...we need to set proper BCLK & LRCLK to support different frequency songs..In modifying
 //BCLK & LRCLK , its giving noisy and improper frequency sound..this has to be checked
-#ifndef CONFIG_SND_S5P_WM8994_MASTER 
+#ifndef CONFIG_SND_S5P_WM8994_MASTER
 	//wm8994_write(codec,WM8994_AIF1_BCLK, clocking1);
 	//wm8994_write(codec,WM8994_AIF1ADC_LRCLK, aif4);
 	//wm8994_write(codec,WM8994_AIF1DAC_LRCLK, aif5);
@@ -1291,7 +1291,7 @@ static int wm8994_startup(struct snd_pcm_substream *substream,
 
 	if (wm8994->power_state == CODEC_OFF) {
 		if (!get_audio_power_status()) {
-			DEBUG_LOG("Power on codec");	
+			DEBUG_LOG("Power on codec");
 			audio_power(1);
 		}
 
@@ -1458,7 +1458,7 @@ static int wm8994_init(struct wm8994_priv *wm8994_private)
 	wm8994->cur_path = PLAYBACK_OFF;
 	wm8994->rec_path = MIC_OFF;
 	wm8994->call_record_path = CALL_RECORDING_OFF;
-	wm8994->call_record_ch = CH_OFF;    
+	wm8994->call_record_ch = CH_OFF;
 	wm8994->fmradio_path = FMR_OFF;
 	wm8994->fmr_mix_path = FMR_MIX_OFF;
 	wm8994->testmode_config_flag = SEC_NORMAL;
@@ -1603,7 +1603,7 @@ static int wm8994_resume(struct snd_soc_codec *codec)
 	if (wm8994->power_state == CODEC_OFF) {
 		// Turn on sequence by recommend Wolfson.
 		audio_power(1);
-		wm8994->power_state = CODEC_ON;		
+		wm8994->power_state = CODEC_ON;
 		wm8994_write(codec, WM8994_POWER_MANAGEMENT_1, 0x3 << WM8994_VMID_SEL_SHIFT | WM8994_BIAS_ENA);
 		msleep(50);	// Wait to setup PLL.
 		wm8994_write(codec, WM8994_POWER_MANAGEMENT_1, WM8994_VMID_SEL_NORMAL | WM8994_BIAS_ENA);

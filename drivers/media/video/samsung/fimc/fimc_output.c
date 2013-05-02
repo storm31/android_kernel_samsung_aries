@@ -103,7 +103,7 @@ int fimc_outdev_stop_streaming(struct fimc_control *ctrl, struct fimc_ctx *ctx)
 	case FIMC_OVLY_NONE_MULTI_BUF:
 #ifdef CONFIG_MACH_ARIES
 		if (ctx->status == FIMC_STREAMON_IDLE)
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 		if (ctx->status <= FIMC_READY_ON || ctx->status == FIMC_STREAMON_IDLE)
 #endif
 			ctx->status = FIMC_STREAMOFF;
@@ -1338,7 +1338,7 @@ int fimc_reqbufs_output(void *fh, struct v4l2_requestbuffers *b)
 		} else if (b->memory == V4L2_MEMORY_USERPTR) {
 #ifdef CONFIG_MACH_ARIES
 			if (mode == FIMC_OVLY_DMA_AUTO)
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 			if (mode == FIMC_OVLY_DMA_AUTO ||
 					mode == FIMC_OVLY_NOT_FIXED)
 #endif
@@ -2217,7 +2217,7 @@ int fimc_qbuf_output(void *fh, struct v4l2_buffer *b)
 		ctx = &ctrl->out->ctx[ctx_num];
 #ifdef CONFIG_MACH_ARIES
 		if (ctx_num != ctrl->out->last_ctx) {
-#else //CONFIG_MACH_P1
+#else // CONFIG_MACH_P1
 		if ((ctx->overlay.mode == FIMC_OVLY_NONE_SINGLE_BUF) ||
 				(ctx->overlay.mode != FIMC_OVLY_NONE_SINGLE_BUF
 				 && ctx_num != ctrl->out->last_ctx)) {
