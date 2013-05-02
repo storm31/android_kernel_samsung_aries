@@ -564,6 +564,10 @@ struct s5p_tv_status {
 	struct regulator	*tv_tvout;
 	struct regulator	*tv_regulator;
 
+	int is_reg_tv_tv_enabled;
+	int is_reg_tv_tvout_enabled;
+	int is_reg_tv_reg_enabled;
+
 	struct clk *tvenc_clk;
 	struct clk *vp_clk;
 	struct clk *mixer_clk;

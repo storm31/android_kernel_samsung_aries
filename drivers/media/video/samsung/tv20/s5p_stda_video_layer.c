@@ -133,10 +133,15 @@ static void _s5p_vlayer_calc_inner_values(void)
 	st->vl_dest_width = d_w;
 	st->vl_dest_height = d_h;
 
-
 	if (o_mode == INTERLACED) {
-		st->vl_src_height	= s_h / 2;
-		st->vl_src_offset_y	= s_oy / 2;
+#ifdef CONFIG_MACH_P1
+		if (st->vl_op_mode.line_skip) { 
+#endif
+			st->vl_src_height	= s_h / 2;
+			st->vl_src_offset_y	= s_oy / 2;
+#ifdef CONFIG_MACH_P1
+		}
+#endif
 		st->vl_dest_height	= d_h / 2;
 		st->vl_dest_offset_y	= d_oy / 2;
 	} else {
