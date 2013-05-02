@@ -120,14 +120,7 @@
 #include <mach/cpu-freq-v210.h>
 #endif
 
-#ifdef CONFIG_KERNEL_DEBUG_SEC
-#include <linux/kernel_sec_common.h>
-#endif
-
 extern void s3c_setup_uart_cfg_gpio(unsigned char port);
-
-#undef pr_debug
-#define pr_debug pr_info
 
 struct class *sec_class;
 EXPORT_SYMBOL(sec_class);
@@ -1554,10 +1547,10 @@ static int isx005_regulator_init(void)
 		}
 	}
 
-	pr_debug("cam_io_regulator = %p\n", cam_io_regulator);
-	pr_debug("cam_a_regulator = %p\n", cam_a_regulator);
-	pr_debug("cam_3m_regulator = %p\n", cam_3m_regulator);
-	pr_debug("cam_af_regulator = %p\n", cam_af_regulator);
+	pr_info("cam_io_regulator = %p\n", cam_io_regulator);
+	pr_info("cam_a_regulator = %p\n", cam_a_regulator);
+	pr_info("cam_3m_regulator = %p\n", cam_3m_regulator);
+	pr_info("cam_af_regulator = %p\n", cam_af_regulator);
 
 	return 0;
 }
@@ -1951,9 +1944,9 @@ static int s5k6aafx_regulator_init(void)
 		}
 	}
 
-	pr_debug("cam_io_regulator = %p\n", cam_io_regulator);
-	pr_debug("cam_cif_regulator = %p\n", cam_cif_regulator);
-	pr_debug("cam_a_regulator = %p\n", cam_a_regulator);
+	pr_info("cam_io_regulator = %p\n", cam_io_regulator);
+	pr_info("cam_cif_regulator = %p\n", cam_cif_regulator);
+	pr_info("cam_a_regulator = %p\n", cam_a_regulator);
 
 	return 0;
 }
@@ -2236,11 +2229,11 @@ static int s5k5ccgx_regulator_init(void)
 		}
 	}
 
-	pr_debug("cam_io_regulator = %p\n", cam_io_regulator);
-	pr_debug("cam_a_regulator = %p\n", cam_a_regulator);
-	pr_debug("cam_3m_regulator = %p\n", cam_3m_regulator);
-	pr_debug("cam_af_regulator = %p\n", cam_af_regulator);
-	pr_debug("cam_cif_regulator = %p\n", cam_cif_regulator);
+	pr_info("cam_io_regulator = %p\n", cam_io_regulator);
+	pr_info("cam_a_regulator = %p\n", cam_a_regulator);
+	pr_info("cam_3m_regulator = %p\n", cam_3m_regulator);
+	pr_info("cam_af_regulator = %p\n", cam_af_regulator);
+	pr_info("cam_cif_regulator = %p\n", cam_cif_regulator);
 	return 0;
 }
 
