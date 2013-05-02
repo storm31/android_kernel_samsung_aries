@@ -941,7 +941,6 @@ void TVout_LDO_ctrl(int enable)
 				}
 
 				printk("%s: LDO3_8 is disabled by TV \n", __func__);
-				fsa9480_manual_switching(AUTO_SWITCH);
 				IsPower_on = 0;
 			}
 		}
