@@ -131,10 +131,12 @@ static void s5pv210_idle(void)
 	local_irq_enable();
 }
 
+#ifndef CONFIG_MACH_P1
 static void s5pv210_sw_reset(void)
 {
 	__raw_writel(0x1, S5P_SWRESET);
 }
+#endif
 
 /* s5pv210_map_io
  *
