@@ -34,11 +34,6 @@
 void s5pv210_setup_sdhci0_cfg_gpio(struct platform_device *dev, int width)
 {
 	unsigned int gpio;
-	bool device_is_p1 = false;
-#ifdef CONFIG_MACH_P1
-	device_is_p1 = true;
-#endif
-
 
 	switch (width) {
 	/* Channel 0 supports 4 and 8-bit bus width */
@@ -66,7 +61,7 @@ void s5pv210_setup_sdhci0_cfg_gpio(struct platform_device *dev, int width)
 		printk(KERN_ERR "Wrong SD/MMC bus width : %d\n", width);
 	}
 
-	if (machine_is_herring() || machine_is_aries() || device_is_p1) {
+	if (machine_is_herring() || machine_is_aries() || machine_is_p1()) {
 		s3c_gpio_cfgpin(S5PV210_GPJ2(7), S3C_GPIO_OUTPUT);
 		s3c_gpio_setpull(S5PV210_GPJ2(7), S3C_GPIO_PULL_NONE);
 		gpio_set_value(S5PV210_GPJ2(7), 1);
