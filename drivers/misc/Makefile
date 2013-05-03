@@ -59,4 +59,5 @@ obj-$(CONFIG_SAMSUNG_MODEMCTL) += samsung_modemctl/
 obj-$(CONFIG_SAMSUNG_DPRAM)	+= dpram/
 obj-$(CONFIG_30PIN_CONN)	+= 30pin_con.o
 obj-$(CONFIG_MHL_SII9234)	+= sii9234.o
+obj-$(CONFIG_VIBETONZ)		+= tspdrv/
 obj-$(CONFIG_FAST_CHARGE)	+= fast_charge.o
