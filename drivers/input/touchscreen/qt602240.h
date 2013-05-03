@@ -47,7 +47,7 @@
 
 #if defined (CONFIG_SAMSUNG_P1) || defined (CONFIG_SAMSUNG_P1C)
 #define IRQ_TOUCH_INT       IRQ_EINT_GROUP(18, 5)	// group 18 : J0
-#elif defined (CONFIG_SAMSUNG_P1L) || defined (CONFIG_SAMSUNG_P1N)
+#elif defined (CONFIG_SAMSUNG_P1LN)
 #define IRQ_TOUCH_INT       IRQ_EINT_GROUP(14, 2)	// group 14 : G0
 #endif
 
@@ -55,7 +55,7 @@
 #define GPIO_TOUCH_EN       S5PV210_GPH2(1)
 #if defined (CONFIG_SAMSUNG_P1) || defined (CONFIG_SAMSUNG_P1C)
 #define GPIO_TOUCH_INT     S5PV210_GPJ0(5)
-#elif defined (CONFIG_SAMSUNG_P1L) || defined (CONFIG_SAMSUNG_P1N)
+#elif defined (CONFIG_SAMSUNG_P1LN)
 #define GPIO_TOUCH_INT     S5PV210_GPG0(2)
 #endif
 #define GPIO_INPUT		0

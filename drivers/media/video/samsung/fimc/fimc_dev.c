@@ -652,7 +652,7 @@ int fimc_mmap_out_dst(struct file *filp, struct vm_area_struct *vma, u32 idx)
 		pfn = __phys_to_pfn(ctrl->out->ctx[ctx_id].dst[idx].base[0]);
 	else
 		pfn = __phys_to_pfn(ctrl->mem.curr);
-#elif defined (CONFIG_SAMSUNG_P1L) || defined (CONFIG_SAMSUNG_P1N)
+#elif defined (CONFIG_SAMSUNG_P1LN)
 		pfn = __phys_to_pfn(ctrl->mem.base);
 #endif
 #endif

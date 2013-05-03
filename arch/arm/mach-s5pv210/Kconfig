@@ -375,17 +375,11 @@ config SAMSUNG_P1
 	help
 	 Select Samsung Galaxy Tab GT-P1000
 
-config SAMSUNG_P1L
+config SAMSUNG_P1LN
 	bool "P1L"
 	depends on PHONE_P1_GSM
 	help
-	 Select Samsung Galaxy Tab GT-P1000L
-
-config SAMSUNG_P1N
-	bool "P1N"
-	depends on PHONE_P1_GSM
-	help
-	 Select Samsung Galaxy Tab GT-P1000N
+	 Select Samsung Galaxy Tab GT-P1000L and GT-P1000N
 endchoice
 endif
 

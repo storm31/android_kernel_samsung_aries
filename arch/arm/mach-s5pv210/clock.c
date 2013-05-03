@@ -525,7 +525,7 @@ static struct clk init_clocks_off[] = {
 		.parent		= &clk_p,
 		.enable		= s5pv210_clk_ip3_ctrl,
 		.ctrlbit	= (1 << 6),
-#if defined (CONFIG_SAMSUNG_P1L) && defined (CONFIG_VIDEO_NM6XX)
+#if defined (CONFIG_VIDEO_NM6XX)
 	}, {
 		.name		= "i2s_v32",
 		.id 	= 2,
