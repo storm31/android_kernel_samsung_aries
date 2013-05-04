@@ -41,16 +41,11 @@
 #include <linux/version.h>
 #include <linux/miscdevice.h>
 #include <linux/platform_device.h>
-#include <linux/uaccess.h>
+#include <asm/uaccess.h>
 #include <linux/hrtimer.h>
-#include <linux/slab.h>
 #include <linux/timed_output.h>
 #include <linux/delay.h>
-#include <linux/clk.h>
-#include <linux/workqueue.h>
 #include <linux/wakelock.h>
-#include <linux/io.h>
-#include <mach/map.h>
 
 #include "tspdrv.h"
 #include "ImmVibeSPI.c"
@@ -73,18 +68,16 @@ static size_t g_cchDeviceName;
 static char g_bIsPlaying;
 
 /* Buffer to store data sent to SPI */
-#define SPI_BUFFER_SIZE (NUM_ACTUATORS * \
-	(VIBE_OUTPUT_SAMPLE_SIZE + SPI_HEADER_SIZE))
-static int g_bStopRequested;
-static actuator_samples_buffer g_SamplesBuffer[NUM_ACTUATORS] = { {0} };
-static char g_cWriteBuffer[SPI_BUFFER_SIZE];
+#define SPI_BUFFER_SIZE (NUM_ACTUATORS * (VIBE_OUTPUT_SAMPLE_SIZE + SPI_HEADER_SIZE))
+static int g_bStopRequested = false;
+static actuator_samples_buffer g_SamplesBuffer[NUM_ACTUATORS] = {{0}};
 
 /* For QA purposes */
 #ifdef QA_TEST
 #define FORCE_LOG_BUFFER_SIZE 128
 #define TIME_INCREMENT 5
-static int g_nTime;
-static int g_nForceLogIndex;
+static int g_nTime = 0;
+static int g_nForceLogIndex = 0;
 static VibeInt8 g_nForceLog[FORCE_LOG_BUFFER_SIZE];
 #endif
 
@@ -111,7 +104,6 @@ static VibeInt8 g_nForceLog[FORCE_LOG_BUFFER_SIZE];
 static struct wake_lock vib_wake_lock;
 static struct work_struct work_timer;
 static struct hrtimer timer;
-static spinlock_t lock;
 
 static unsigned int pwm_period = PWM_PERIOD;
 static unsigned int pwm_duty = 100;
@@ -119,7 +111,7 @@ static unsigned int pwm_duty_value = PWM_DUTY_MAX;
 static unsigned int multiplier = (PWM_DUTY_MAX - PWM_DUTY_MIN) / 100;
 static int pwm_value = 0;
 unsigned int g_PWM_duty_max = PWM_PERIOD;
-unsigned int isRunning	 = 0;
+bool isRunning	 = false;
 
 
 
@@ -134,7 +126,7 @@ static int set_vibetonz(int timeout)
 				return 0;
 
 			vib_en = false;
-			isRunning = 0;
+			isRunning = false;
 			s3c_gpio_cfgpin(VIB_PWM, S3C_GPIO_OUTPUT);
 			regulator_force_disable(regulator_motor);
 			pwm_disable(Immvib_pwm);
@@ -149,7 +141,7 @@ static int set_vibetonz(int timeout)
 				return 0;
 
 			vib_en = true;
-			isRunning = 1;
+			isRunning = true;
 			s3c_gpio_cfgpin(VIB_PWM, S3C_GPIO_SFN(2));
 			regulator_enable(regulator_motor);
 			pwm_config(Immvib_pwm, pwm_duty_value, pwm_period);
@@ -169,32 +161,32 @@ void work_timer_func(struct work_struct *work)
 
 static enum hrtimer_restart vibetonz_timer_func(struct hrtimer *timer)
 {
-	schedule_work(&work_timer);
+    if (!work_pending(&work_timer))
+		schedule_work(&work_timer);
+
 	return HRTIMER_NORESTART;
 }
 
 static int get_time_for_vibetonz(struct timed_output_dev *dev)
 {
+	int remaining;
 	if (hrtimer_active(&timer)) {
 		ktime_t r = hrtimer_get_remaining(&timer);
 		struct timeval t = ktime_to_timeval(r);
-		return t.tv_sec * 1000 + t.tv_usec / 1000000;
+		remaining = t.tv_sec * 1000 + t.tv_usec / 1000000;
 	} else
-		return 0;
+		remaining = 0;
+
+	if(pwm_value == -1)
+		remaining = -1;
+
+	return remaining;
 }
 
 static void enable_vibetonz_from_user(struct timed_output_dev *dev,int value)
 {
-	unsigned long flags;
-
-	cancel_work_sync(&work_timer);
 	hrtimer_cancel(&timer);
-
-	schedule_work(&work_timer);
-	spin_lock_irqsave(&lock, flags);
-
 	set_vibetonz(value);
-
 	pwm_value = value;
 
 	if (value > 0) {
@@ -207,7 +199,6 @@ static void enable_vibetonz_from_user(struct timed_output_dev *dev,int value)
 
 		pwm_value = 0;
 	}
-	spin_unlock_irqrestore(&lock, flags);
 }
 
 static struct timed_output_dev timed_output_vt =
@@ -322,52 +313,13 @@ MODULE_AUTHOR("Immersion Corporation");
 MODULE_DESCRIPTION("TouchSense Kernel Module");
 MODULE_LICENSE("GPL v2");
 
-int vibetonz_clk_on(struct device *dev)
-{
-	struct clk *vibetonz_clk = NULL;
-    /*printk(KERN_ERR"[VIBRATOR]vibetonz_clk_on is called\n");*/
-	vibetonz_clk = clk_get(dev, "timers");
-	if (IS_ERR(vibetonz_clk)) {
-		printk(KERN_ERR "tspdrv: failed to get clock for vibetonz\n");
-		goto err_clk0;
-	}
-	clk_enable(vibetonz_clk);
-	clk_put(vibetonz_clk);
-
-	return 0;
-
-err_clk0:
-	clk_put(vibetonz_clk);
-	return -EINVAL;
-}
-
-int vibetonz_clk_off(struct device *dev)
-{
-	struct clk *vibetonz_clk = NULL;
-
-	vibetonz_clk = clk_get(dev, "timers");
-	if (IS_ERR(vibetonz_clk)) {
-		DbgOut((KERN_ERR "tspdrv: failed to get clock for vibetonz\n"));
-		goto err_clk0;
-	}
-	clk_disable(vibetonz_clk);
-	clk_put(vibetonz_clk);
-
-	return 0;
-
-err_clk0:
-	clk_put(vibetonz_clk);
-
-	return -EINVAL;
-}
-
 int init_module(void)
 {
 	int nRet, i; /* initialized below */
 
 	nRet = misc_register(&miscdev);
 	if (nRet) {
-		printk(KERN_ERR "[VIBRATOR]tspdrv: misc_register failed.\n");
+		printk(KERN_ERR "tspdrv: misc_register failed.\n");
 		return nRet;
 	}
 
@@ -402,9 +354,7 @@ int init_module(void)
 		gpio_free(VIB_PWM);
 	}
 
-	vibetonz_clk_on(&platdev.dev);
 	INIT_WORK(&work_timer, work_timer_func);
-	spin_lock_init(&lock);
 	ImmVibeSPI_ForceOut_Initialize();
 	VibeOSKernelLinuxInitTimer();
 
@@ -439,7 +389,7 @@ int init_module(void)
 
 void cleanup_module(void)
 {
-	DbgOut((KERN_INFO "tspdrv: cleanup_module.\n"));
+	DbgOut((KERN_DEBUG "tspdrv: cleanup_module.\n"));
 
 	regulator_put(regulator_motor);
 
@@ -454,7 +404,7 @@ void cleanup_module(void)
 
 static int open(struct inode *inode, struct file *file)
 {
-	DbgOut((KERN_INFO "tspdrv: open.\n"));
+	DbgOut((KERN_DEBUG "tspdrv: open.\n"));
 
 	if (!try_module_get(THIS_MODULE))
 		return -ENODEV;
@@ -464,7 +414,7 @@ static int open(struct inode *inode, struct file *file)
 
 static int release(struct inode *inode, struct file *file)
 {
-	DbgOut((KERN_INFO "tspdrv: release.\n"));
+    DbgOut((KERN_DEBUG "tspdrv: release.\n"));
 
 	/*
 	** Reset force and stop timer when the driver is closed, to make sure
@@ -519,13 +469,6 @@ static ssize_t write(struct file *file, const char *buf, size_t count, loff_t *p
 		return 0;
 	}
 
-	/* Copy immediately the input buffer */
-	if (0 != copy_from_user(g_cWriteBuffer, buf, count)) {
-		/* Failed to copy all the data, exit */
-		DbgOut((KERN_ERR "tspdrv: copy_from_user failed.\n"));
-		return 0;
-	}
-
 	/* Check buffer size */
 	if ((count <= SPI_HEADER_SIZE) || (count > SPI_BUFFER_SIZE)) {
 		DbgOut((KERN_ERR "tspdrv: invalid write buffer size.\n"));
@@ -535,8 +478,7 @@ static ssize_t write(struct file *file, const char *buf, size_t count, loff_t *p
 	while (i < count) {
 		int nIndexFreeBuffer;   /* initialized below */
 
-		samples_buffer* pInputBuffer =	(samples_buffer *)
-			(&g_cWriteBuffer[i]);
+		samples_buffer* pInputBuffer = (samples_buffer*)(&buf[i]);
 
 		if ((i + SPI_HEADER_SIZE) >= count) {
 			/*
@@ -581,10 +523,12 @@ static ssize_t write(struct file *file, const char *buf, size_t count, loff_t *p
 			return 0;
 		}
 
-		/* Store the data in the free buffer of the given actuator */
-		memcpy(&(g_SamplesBuffer[pInputBuffer->nActuatorIndex].
-			actuatorSamples[nIndexFreeBuffer]), &g_cWriteBuffer[i],
-			(SPI_HEADER_SIZE + pInputBuffer->nBufferSize));
+		/* Store the data in the actuator's free buffer */
+		if (0 != copy_from_user(&(g_SamplesBuffer[pInputBuffer->nActuatorIndex].actuatorSamples[nIndexFreeBuffer]), &(buf[i]), (SPI_HEADER_SIZE + pInputBuffer->nBufferSize))) {
+			/* Failed to copy all the data, exit */
+			DbgOut((KERN_ERR "tspdrv: copy_from_user failed.\n"));
+			return 0;
+		}
 
 		/*
 		if the no buffer is playing,
@@ -674,14 +618,10 @@ static int suspend(struct platform_device *pdev, pm_message_t state)
 {
 	int ret;
 
-	if (g_bIsPlaying) {
+	if (g_bIsPlaying)
 		ret = -EBUSY;
-	} else {
-		/* Disable system timers */
-		vibetonz_clk_off(&pdev->dev);
-
+	else /* Disable system timers */
 		ret = 0;
-	}
 
 	DbgOut((KERN_DEBUG "tspdrv: %s (%d).\n", __func__, ret));
 	return ret;
@@ -689,21 +629,12 @@ static int suspend(struct platform_device *pdev, pm_message_t state)
 
 static int resume(struct platform_device *pdev)
 {
-	u32 __iomem *pram;
+    DbgOut((KERN_DEBUG "tspdrv: resume.\n"));
 
-	/* Restart system timers */
-	vibetonz_clk_on(&pdev->dev);
-
-	/* Restore system timers configuration */
-	pram = ioremap(S5P_PA_TIMER, 4);
-	writel(0x0F00, pram);
-	iounmap(pram);
-
-	DbgOut((KERN_DEBUG "tspdrv: %s.\n", __func__));
-	return 0;
+	return 0;   /* can resume */
 }
 
 static void platform_release(struct device *dev)
 {
-	DbgOut((KERN_INFO "tspdrv: platform_release.\n"));
+    DbgOut((KERN_DEBUG "tspdrv: platform_release.\n"));
 }

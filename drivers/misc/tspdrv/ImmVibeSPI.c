@@ -47,7 +47,7 @@
 #define PWM_DEVICE	1
 
 extern unsigned int g_PWM_duty_max;
-extern unsigned int isRunning;
+extern bool isRunning;
 
 struct pwm_device	*Immvib_pwm;
 static bool g_bAmpEnabled = false;
@@ -66,7 +66,7 @@ IMMVIBESPIAPI VibeStatus ImmVibeSPI_ForceOut_AmpDisable(VibeUInt8 nActuatorIndex
 		if (gpio_get_value(VIB_EN)) {
 			if (isRunning) {
 				regulator_force_disable(regulator_motor);
-				isRunning = 0;
+				isRunning = false;
 			}
 		}
 		gpio_direction_output(VIB_EN, 0);
@@ -85,7 +85,7 @@ IMMVIBESPIAPI VibeStatus ImmVibeSPI_ForceOut_AmpEnable(VibeUInt8 nActuatorIndex)
 		s3c_gpio_cfgpin(VIB_PWM, S3C_GPIO_SFN(2));
 		if(!isRunning) {
 			regulator_enable(regulator_motor);
-			isRunning = 1;
+			isRunning = true;
 		}
 		pwm_enable(Immvib_pwm);
 		gpio_direction_output(VIB_EN, 1);
