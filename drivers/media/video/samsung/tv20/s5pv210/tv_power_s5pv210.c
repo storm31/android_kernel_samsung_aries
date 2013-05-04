@@ -163,7 +163,7 @@ void __s5p_tv_poweroff(void)
 	if (s5ptv_status.is_reg_tv_reg_enabled) {
 		ret = regulator_force_disable(s5ptv_status.tv_regulator);
 		if (ret)
-			s5ptv_status.is_reg_tv_reg_enabled = 1;
+			s5ptv_status.is_reg_tv_reg_enabled = 0;
 	}
 
 #ifdef CONFIG_MACH_P1

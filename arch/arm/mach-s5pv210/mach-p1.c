@@ -190,6 +190,12 @@ static int p1_notifier_call(struct notifier_block *this,
 	}
 	__raw_writel(mode, S5P_INFORM6);
 
+	if(code != SYS_POWER_OFF) {
+		if(sec_set_param_value)	{
+			sec_set_param_value(__REBOOT_MODE, &mode);
+		}
+	}
+
 	return NOTIFY_DONE;
 }
 

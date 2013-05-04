@@ -20,6 +20,11 @@ obj-$(CONFIG_CPU_FREQ)		+= cpufreq.o
 obj-$(CONFIG_S5PV210_POWER_DOMAIN)	+= power-domain.o
 obj-$(CONFIG_S5PV210_CORESIGHT) += coresight.o
 
+# P1 compat
+ifdef CONFIG_MACH_P1
+sec_switch-y	:=  p1-sec_switch.o
+endif
+
 # machine support
 
 obj-$(CONFIG_MACH_AQUILA)	+= mach-aquila.o

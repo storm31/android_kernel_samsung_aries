@@ -1117,6 +1117,7 @@ static int __devinit s3cfb_probe(struct platform_device *pdev)
 		goto err_regulator;
 	}
 
+#ifdef CONFIG_MACH_ARIES
 	fbdev->vcc_lcd = regulator_get(&pdev->dev, "vcc_lcd");
 	if (!fbdev->vcc_lcd) {
 		dev_err(fbdev->dev, "failed to get vcc_lcd\n");
@@ -1129,7 +1130,7 @@ static int __devinit s3cfb_probe(struct platform_device *pdev)
 		ret = -EINVAL;
 		goto err_vcc_lcd;
 	}
-#ifdef CONFIG_MACH_ARIES
+
 	fbdev->vlcd = regulator_get(&pdev->dev, "vlcd");
 	if (!fbdev->vlcd) {
 		dev_err(fbdev->dev, "failed to get vlcd\n");
@@ -1275,15 +1276,15 @@ err_mem:
 err_io:
 	pdata->clk_off(pdev, &fbdev->clock);
 
+err_pdata:
 #ifdef CONFIG_MACH_ARIES
-err_vlcd:
 	regulator_disable(fbdev->vlcd);
-#endif
 
-err_vcc_lcd:
+err_vlcd:
 	regulator_disable(fbdev->vcc_lcd);
 
-err_pdata:
+err_vcc_lcd:
+#endif
 	regulator_disable(fbdev->regulator);
 
 err_regulator:
@@ -1373,8 +1374,8 @@ void s3cfb_early_suspend(struct early_suspend *h)
 #endif
 #ifdef CONFIG_MACH_ARIES
 	regulator_disable(fbdev->vlcd);
-#endif
 	regulator_disable(fbdev->vcc_lcd);
+#endif
 	regulator_disable(fbdev->regulator);
 
 	return ;
@@ -1396,11 +1397,11 @@ void s3cfb_late_resume(struct early_suspend *h)
 	if (ret < 0)
 		dev_err(fbdev->dev, "failed to enable regulator\n");
 
+#ifdef CONFIG_MACH_ARIES
 	ret = regulator_enable(fbdev->vcc_lcd);
 	if (ret < 0)
 		dev_err(fbdev->dev, "failed to enable vcc_lcd\n");
 
-#ifdef CONFIG_MACH_ARIES
 	ret = regulator_enable(fbdev->vlcd);
 	if (ret < 0)
 		dev_err(fbdev->dev, "failed to enable vlcd\n");

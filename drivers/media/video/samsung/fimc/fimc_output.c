@@ -806,7 +806,7 @@ static void fimc_outdev_set_dst_dma_offset(struct fimc_control *ctrl,
 	}
 
 	switch (ctx->overlay.mode) {
-	case FIMC_OVLY_DMA_AUTO:
+	case FIMC_OVLY_DMA_AUTO: // fall through for aries
 #if defined(CONFIG_VIDEO_NM6XX)
 		if(fimc->active_camera != CAMERA_ID_MOBILETV)
 		{
@@ -2087,6 +2087,7 @@ static int fimc_qbuf_output_dma_auto(struct fimc_control *ctrl,
 		}
 		mutex_unlock(&ctrl->lock);
 #endif
+		/* fall through */
 
 	case FIMC_STREAMON_IDLE:
 		fimc_outdev_set_src_addr(ctrl, ctx->src[idx].base);

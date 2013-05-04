@@ -292,7 +292,7 @@ static int fimc_camera_start(struct fimc_control *ctrl)
 	ret = subdev_call(ctrl, video, enum_framesizes, &cam_frmsize);
 	if (ret < 0) {
 		fimc_err("%s: enum_framesizes failed\n", __func__);
-		if (ret != -ENOIOCTLCMD){
+		if (ret != -ENOIOCTLCMD) {
 #ifdef CONFIG_MACH_P1
 			camera_back_check = 0;
 #endif
@@ -394,7 +394,7 @@ static int fimc_camera_start(struct fimc_control *ctrl)
 		ctrl->cam->initialized = 0;
 		ret = fimc_camera_init(ctrl);
 #ifdef CONFIG_MACH_P1
-		if(ret < 0){
+		if(ret < 0) {
 			fimc_err("%s: Error in fimc_camera_init - start\n", __func__);
 			camera_back_check = 0;
 			return ret;
@@ -1182,7 +1182,7 @@ int fimc_reqbufs_capture(void *fh, struct v4l2_requestbuffers *b)
 
 	mutex_lock(&ctrl->v4l2_lock);
 
-	if (b->count < 1 || b->count > FIMC_CAPBUFS){
+	if (b->count < 1 || b->count > FIMC_CAPBUFS) {
 #ifdef CONFIG_MACH_P1
 		mutex_unlock(&ctrl->v4l2_lock);
 #endif
