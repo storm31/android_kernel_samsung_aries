@@ -241,7 +241,7 @@ static void cmc623_pwm_backlight_ctl(struct platform_device *pdev, int intensity
 	// brightness tuning
 	tune_level = cmc623_pwm_get_tune(intensity);
 
-	printk("[cmc]%d(%d)\n", intensity, tune_level);
+	//printk("[cmc]%d(%d)\n", intensity, tune_level);
 
 	cmc623_pwm_apply_brightness(pdev, tune_level);
 }
