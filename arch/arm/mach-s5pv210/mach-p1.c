@@ -120,7 +120,7 @@
 #include <mach/cpu-freq-v210.h>
 #endif
 
-#include "p1.h"
+extern void s3c_setup_uart_cfg_gpio(unsigned char port);
 
 struct class *sec_class;
 EXPORT_SYMBOL(sec_class);
@@ -298,7 +298,6 @@ static struct s3c2410_uartcfg p1_uartcfgs[] __initdata = {
 		.ucon		= S5PV210_UCON_DEFAULT,
 		.ulcon		= S5PV210_ULCON_DEFAULT,
 		.ufcon		= S5PV210_UFCON_DEFAULT,
-		.wake_peer	= p1_bt_uart_wake_peer,
 	},
 	{
 		.hwport		= 1,
