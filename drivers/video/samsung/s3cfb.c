@@ -145,7 +145,7 @@ static int s3cfb_draw_logo(struct fb_info *fb)
 #endif
 	if (readl(S5P_INFORM5)) //LPM_CHARGING mode
 #ifdef CONFIG_FB_S3C_LVDS
-		printk(KERN_INFO "[LVDS] lmp charging mode\n");
+		printk(KERN_INFO "[LVDS] lpm charging mode\n");
 #else
 		memcpy(fb->screen_base, charging, fb->var.yres * fb->fix.line_length);
 #endif
