@@ -44,7 +44,6 @@
 #include <linux/slab.h>
 #include <linux/irq.h>
 #include <linux/miscdevice.h>
-#include <linux/mutex.h>
 #include <linux/gpio.h>
 #include <linux/earlysuspend.h>
 #include <mach/hardware.h>
@@ -52,6 +51,7 @@
 #include <mach/regs-gpio.h>
 #include <asm/uaccess.h>
 #include <linux/delay.h>
+#include <linux/platform_device.h>
 #include <linux/input.h>
 #include <linux/workqueue.h>
 #include <linux/freezer.h>
@@ -64,9 +64,6 @@
 #define E_COMPASS_ADDRESS	0x1c	/* CAD0 : 0, CAD1 : 0 */
 #define I2C_DF_NOTIFY       0x01
 #define IRQ_COMPASS_INT IRQ_EINT(2) /* EINT(2) */
-
-static DEFINE_MUTEX(ak8973b_mutex);
-
 
 static struct i2c_client *this_client;
 
@@ -155,11 +152,6 @@ static int AKI2C_TxData(char *txData, int length)
 		return -EIO;
 	} else
 		return 0;
-}
-
-static int AKECS_Init(void)
-{
-	return 0;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -341,10 +333,10 @@ static int akmd_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static int akmd_ioctl(struct file *file, unsigned int cmd,
+static long akmd_ioctl(struct file *file, unsigned int cmd,
 		unsigned long arg)
 {
-	int err = 0;
+	long err = 0;
 	int i;
 	void __user *argp = (void __user *)arg;
 
@@ -352,14 +344,12 @@ static int akmd_ioctl(struct file *file, unsigned int cmd,
 	int ret = -1;
 	short mode; /* step_count,*/
 
-	mutex_lock(&ak8973b_mutex);
 	/* check cmd */
 	if(_IOC_TYPE(cmd) != AKMIO)
 	{
 #if DEBUG
 		printk("[AK8973] cmd magic type error\n");
 #endif
-		mutex_unlock(&ak8973b_mutex);
 		return -ENOTTY;
 	}
 	if(_IOC_DIR(cmd) & _IOC_READ)
@@ -371,7 +361,6 @@ static int akmd_ioctl(struct file *file, unsigned int cmd,
 #if DEBUG
 		printk("[AK8973] cmd access_ok error\n");
 #endif
-		mutex_unlock(&ak8973b_mutex);
 		return -EFAULT;
 	}
 
@@ -379,11 +368,11 @@ static int akmd_ioctl(struct file *file, unsigned int cmd,
 		case ECS_IOCTL_READ:
 		case ECS_IOCTL_WRITE:
 			if (copy_from_user(&rwbuf, argp, sizeof(rwbuf)))
-				err = -EFAULT;
+				return -EFAULT;
 			break;
 		case ECS_IOCTL_SET_MODE:
 			if (copy_from_user(&mode, argp, sizeof(mode)))
-				err = -EFAULT;
+				return -EFAULT;
 			break;
 		default:
 			break;
@@ -399,14 +388,14 @@ static int akmd_ioctl(struct file *file, unsigned int cmd,
 			gprintk(" addr %02x:", rwbuf[1]);
 			gprintk("\n");
 			if (rwbuf[0] < 1)
-				err = -EINVAL;
+				return -EINVAL;
 			ret = AKI2C_RxData(&rwbuf[1], rwbuf[0]);
 			//for(i=0; i<rwbuf[0]; i++){
 			//	printk(" %02x", rwbuf[i+1]);
 			//}
 			gprintk(" ret = %d\n", ret);
 			if (ret < 0)
-				err = ret;
+				return ret;
 			break;
 		case ECS_IOCTL_WRITE:
 			gprintk("[AK8973B] ECS_IOCTL_WRITE %x\n", cmd);
@@ -416,25 +405,25 @@ static int akmd_ioctl(struct file *file, unsigned int cmd,
 			}
 			gprintk("\n");
 			if (rwbuf[0] < 2)
-				err = -EINVAL;
+				return -EINVAL;
 			ret = AKI2C_TxData(&rwbuf[1], rwbuf[0]);
 			gprintk(" ret = %d\n", ret);
 			if (ret < 0)
-				err = ret;
+				return ret;
 			break;
 		case ECS_IOCTL_SET_MODE:
 			gprintk("[AK8973B] ECS_IOCTL_SET_MODE %x mode=%x\n", cmd, mode);
 			ret = AKECS_SetMode((char)mode);
 			gprintk(" ret = %d\n", ret);
 			if (ret < 0)
-				err = ret;
+				return ret;
 			break;
 		case ECS_IOCTL_GETDATA:
 			gprintk("[AK8973B] ECS_IOCTL_GETDATA %x\n", cmd);
 			ret = AKECS_TransRBuff(msg, RBUFF_SIZE+1);
 			gprintk(" ret = %d\n", ret);
 			if (ret < 0)
-				err = ret;
+				return ret;
 			for(i=0; i<ret; i++){
 				gprintk(" %02x", msg[i]);
 			}
@@ -442,23 +431,23 @@ static int akmd_ioctl(struct file *file, unsigned int cmd,
 			break;
 		default:
 			gprintk("Unknown cmd %x\n", cmd);
-			err = -ENOTTY;
+			return -ENOTTY;
 	}
 
 	switch (cmd) {
 		case ECS_IOCTL_READ:
 			if (copy_to_user(argp, &rwbuf, sizeof(rwbuf)))
-				err = -EFAULT;
+				return -EFAULT;
 			break;
 		case ECS_IOCTL_GETDATA:
 			if (copy_to_user(argp, &msg, sizeof(msg)))
-				err = -EFAULT;
+				return -EFAULT;
 			break;
 		default:
 			break;
 	}
-	mutex_unlock(&ak8973b_mutex);
-	return err;
+
+	return 0;
 }
 
 static void ak8973b_init_hw(void)
@@ -487,8 +476,8 @@ static void ak8973b_init_hw(void)
 static struct file_operations akmd_fops = {
 	.owner = THIS_MODULE,
 	.open = akmd_open,
-	.release = akmd_release,
 	.unlocked_ioctl = akmd_ioctl,
+	.release = akmd_release,
 };
 
 static struct miscdevice akmd_device = {
@@ -502,7 +491,6 @@ static int ak8973_probe(struct i2c_client *client,
 {
 	int err = 0;
 	struct ak8973b_data *akm;
-	struct device *dev = &client->dev;
 
 	gprintk("start\n");
 	printk("[%s] ak8973 started...\n",__func__);
@@ -538,7 +526,6 @@ static int ak8973_probe(struct i2c_client *client,
 	return 0;
 
 exit_misc_device_register_failed:
-exit_input_dev_alloc_failed:
 	kfree(akm);
 exit_alloc_data_failed:
 	return err;
@@ -564,21 +551,21 @@ static int __exit ak8973_remove(struct i2c_client *client)
 	return 0;
 }
 
-static int ak8973_suspend( struct platform_device* pdev, pm_message_t state )
+static int ak8973_suspend( struct device* dev )
 {
-	printk("############## %s \n",__func__);
+	printk("############## %s \n",__func__);	
 	printk("[%s] Set Mode AKECS_MODE_POWERDOWN\n", __func__);
-	AKECS_SetMode(AKECS_MODE_POWERDOWN);
+	AKECS_SetMode(AKECS_MODE_POWERDOWN);			
 	return 0;
 }
 
 
-static int ak8973_resume( struct platform_device* pdev )
+static int ak8973_resume( struct device* dev )
 {
-	printk("@@@@ %s \n",__func__);
-
+	printk("@@@@ %s \n",__func__); 
+	
 	printk("[%s] Set Mode AKECS_MODE_MEASURE\n", __func__);
-	AKECS_SetMode(AKECS_MODE_MEASURE);
+	AKECS_SetMode(AKECS_MODE_MEASURE);	
 
 	wake_up(&open_wq);
 	return 0;
@@ -589,16 +576,20 @@ static const struct i2c_device_id ak8973_id[] = {
 	{}
 };
 
+static const struct dev_pm_ops ak8973b_pm_ops = {
+	.suspend = ak8973_suspend,
+	.resume = ak8973_resume,
+};
+
 MODULE_DEVICE_TABLE(i2c, ak8973_id);
 
 static struct i2c_driver ak8973b_i2c_driver = {
 	.driver = {
-		   .name = "ak8973",
-		   },
+		.name = "ak8973",
+		.pm = &ak8973b_pm_ops,
+	},
 	.probe = ak8973_probe,
 	.remove = __exit_p(ak8973_remove),
-	.suspend = ak8973_suspend,
-	.resume = ak8973_resume,
 	.id_table = ak8973_id,
 };
 
