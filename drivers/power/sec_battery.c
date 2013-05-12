@@ -399,8 +399,17 @@ static int sec_bat_get_property(struct power_supply *bat_ps,
 			return -EINVAL;
 
 		// Capacity cannot exceed 100%.
-		if ( val->intval >= 100 || chg->bat_info.batt_is_full )
+		if(val->intval >= 100)
 			val->intval = 100;
+
+		// Update 100% only full charged with TA Charger.
+		if (chg->bat_info.batt_is_full &&
+		    (chg->cable_status == CABLE_TYPE_AC && !chg->bat_info.batt_improper_ta))
+			val->intval = 100;
+		else {
+			if(val->intval == 100)
+				val->intval = 99;
+		}
 
 #ifdef CONFIG_BATTERY_MAX17042
 		if(chg->low_batt_boot_flag)
@@ -667,23 +676,23 @@ static void sec_bat_discharge_reason(struct chg_data *chg)
 
 	discharge_reason = chg->bat_info.dis_reason & 0xf;
 
-	if (discharge_reason == DISCONNECT_BAT_FULL &&
+	if (discharge_reason & DISCONNECT_BAT_FULL &&
 			chg->bat_info.batt_vcell < RECHARGE_COND_VOLTAGE) {
 		chg->bat_info.dis_reason &= ~DISCONNECT_BAT_FULL;
 		chg->is_recharging = true;
 	}
 
-	if (discharge_reason == DISCONNECT_TEMP_OVERHEAT &&
+	if (discharge_reason & DISCONNECT_TEMP_OVERHEAT &&
 			chg->bat_info.batt_temp <=
 			HIGH_RECOVER_TEMP)
 		chg->bat_info.dis_reason &= ~DISCONNECT_TEMP_OVERHEAT;
 
-	if (discharge_reason == DISCONNECT_TEMP_FREEZE &&
+	if (discharge_reason & DISCONNECT_TEMP_FREEZE &&
 			chg->bat_info.batt_temp >=
 			LOW_RECOVER_TEMP)
 		chg->bat_info.dis_reason &= ~DISCONNECT_TEMP_FREEZE;
 
-	if (discharge_reason == DISCONNECT_OVER_TIME &&
+	if (discharge_reason & DISCONNECT_OVER_TIME &&
 			chg->bat_info.batt_vcell < RECHARGE_COND_VOLTAGE)
 		chg->bat_info.dis_reason &= ~DISCONNECT_OVER_TIME;
 
