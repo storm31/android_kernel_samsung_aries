@@ -274,11 +274,20 @@ static int s3cfb_unmap_default_video_memory(struct fb_info *fb)
 		platform_get_drvdata(to_platform_device(fb->device));
 	struct fb_fix_screeninfo *fix = &fb->fix;
 	struct s3cfb_window *win = fb->par;
+#ifdef CONFIG_MACH_P1
+	struct s3c_platform_fb *pdata = to_fb_plat(fbdev->dev);
+#endif
 
 	if (fix->smem_start) {
 #if defined(CONFIG_FB_S3C_VIRTUAL)
 		iounmap(fb->screen_base);
 #else
+#ifdef CONFIG_MACH_P1
+		if (pdata && pdata->pmem_start[win->id] &&
+				(pdata->pmem_size[win->id] >= fix->smem_len))
+			iounmap(fb->screen_base);
+		else
+#endif
 		dma_free_writecombine(fbdev->dev, fix->smem_len,
 				      fb->screen_base, fix->smem_start);
 #endif
