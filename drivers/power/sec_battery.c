@@ -82,6 +82,7 @@
 #define LOW_BLOCK_TEMP			0
 #define LOW_RECOVER_TEMP		30
 
+#define BATTERY_CURRENT
 
 struct battery_info {
 	s32 batt_vol;		/* Battery voltage from ADC */
@@ -193,6 +194,9 @@ static struct device_attribute sec_battery_attrs[] = {
 	SEC_BATTERY_ATTR(charging_mode_booting),
 	SEC_BATTERY_ATTR(batt_temp_check),
 	SEC_BATTERY_ATTR(batt_full_check),
+#endif
+#ifdef BATTERY_CURRENT
+	SEC_BATTERY_ATTR(batt_current),
 #endif
 };
 
@@ -420,6 +424,16 @@ static int sec_bat_get_property(struct power_supply *bat_ps,
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
 		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
 		break;
+#ifdef BATTERY_CURRENT
+        case BATT_CURRENT:
+	  if (chg->pdata && chg->pdata->psy_fuelgauge &&
+	          chg->pdata->psy_fuelgauge->get_property &&
+	          chg->pdata->psy_fuelgauge->get_property(
+		          chg->pdata->psy_fuelgauge, psp, val) < 0)
+	          return -EINVAL;
+	  break;
+
+#endif  
 	default:
 		return -EINVAL;
 	}
@@ -1057,6 +1071,20 @@ static ssize_t sec_bat_show_attrs(struct device *dev,
 		i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n", chg->bat_info.batt_is_full);
 		break;
 #endif
+#ifdef BATTERY_CURRENT
+		case BATT_CURRENT:
+		  if (chg->pdata &&
+                    chg->pdata->psy_fuelgauge &&
+		      chg->pdata->psy_fuelgauge->get_property) {
+		    chg->pdata->psy_fuelgauge->get_property(
+							    chg->pdata->psy_fuelgauge,
+							    POWER_SUPPLY_PROP_CURRENT_NOW, &value);
+		    chg->bat_info.batt_current = value.intval;
+		  }
+		  i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n", chg->bat_info.batt_current);
+		  break;
+#endif
+
 	default:
 		i = -EINVAL;
 	}
