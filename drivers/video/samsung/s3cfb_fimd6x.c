@@ -205,7 +205,11 @@ int s3cfb_set_clock(struct s3cfb_global *ctrl)
 	}
 
 	div = src_clk / vclk;
+#ifdef CONFIG_MACH_ARIES
 	if (src_clk % vclk)
+#else // CONFIG_MACH_P1
+	if (src_clk % vclk > vclk / 2)
+#endif
 		div++;
 
 	if ((src_clk/div) > maxclk)
