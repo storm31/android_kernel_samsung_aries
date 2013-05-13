@@ -244,8 +244,8 @@ void p1_lpm_mode_check(struct chg_data *chg)
 static void sec_bat_set_cable(struct sec_battery_callbacks *ptr,
 	enum cable_type_t status)
 {
-	printk("%s : cable_type = %d ( 0 : NONE, 1: USB, 2: TA) \n",__func__,status);
 	struct chg_data *chg = container_of(ptr, struct chg_data, callbacks);
+	printk("%s : cable_type = %d ( 0 : NONE, 1: USB, 2: TA) \n",__func__,status);
 	chg->cable_status = status;
 	power_supply_changed(&chg->psy_ac);
 	power_supply_changed(&chg->psy_usb);
@@ -256,10 +256,11 @@ static void sec_bat_set_cable(struct sec_battery_callbacks *ptr,
 static void sec_bat_set_status(struct sec_battery_callbacks *ptr,
 	enum charging_status_type_t status)
 {
-	printk("%s : charging_status = %d ( -1 : ERROR, 0 : NONE, 1: ACTIVE, 2: FULL) \n",__func__,status);
 	struct chg_data *chg = container_of(ptr, struct chg_data, callbacks);
-	chg->charging_status = status;
 	int vdc_status = 0;
+	printk("%s : charging_status = %d ( -1 : ERROR, 0 : NONE, 1: ACTIVE, 2: FULL) \n",__func__,status);
+	chg->charging_status = status;
+
 
 	if(chg->pdata && chg->pdata->pmic_charger &&
 			chg->pdata->pmic_charger->get_connection_status)
@@ -294,8 +295,8 @@ static void sec_bat_set_status(struct sec_battery_callbacks *ptr,
 
 static void sec_bat_force_update(struct sec_battery_callbacks *ptr)
 {
-	printk("%s : force update called\n",__func__);
 	struct chg_data *chg = container_of(ptr, struct chg_data, callbacks);
+	printk("%s : force update called\n",__func__);
 
 	// Just update now.
 	wake_lock(&chg->work_wake_lock);
@@ -616,7 +617,7 @@ static void sec_bat_discharge_reason(struct chg_data *chg)
 	ktime_t ktime;
 	struct timespec cur_time;
 	union power_supply_propval value;
-	bool vdc_status;
+	bool vdc_status = false;
 	int recover_flag = 0;
 
 	if (chg->pdata && chg->pdata->psy_fuelgauge &&
@@ -723,7 +724,7 @@ static void sec_bat_discharge_reason(struct chg_data *chg)
 
 	if (chg->discharging_time &&
 			cur_time.tv_sec > chg->discharging_time) {
-		pr_info("%s : cur_time = %d, timeout = %d\n", __func__, cur_time.tv_sec, chg->discharging_time);
+		//pr_info("%s : cur_time = %d, timeout = %d\n", __func__, cur_time.tv_sec, chg->discharging_time);
 		chg->set_charge_timeout = true;
 //		chg->bat_info.dis_reason |= DISCONNECT_OVER_TIME;  // for GED (crespo).
 		chg->bat_info.dis_reason |= DISCONNECT_BAT_FULL;
@@ -854,8 +855,7 @@ static int sec_cable_status_update(struct chg_data *chg)
 	{
 		vdc_status = true;
 		if (chg->bat_info.dis_reason) {
-			pr_info("%s : battery status discharging : %d\n",
-				__func__, chg->bat_info.dis_reason);
+			//pr_info("%s : battery status discharging : %d\n", __func__, chg->bat_info.dis_reason);
 			/* have vdcin, but cannot charge */
 			chg->charging = false;
 			ret = sec_bat_charging_control(chg);
@@ -949,8 +949,7 @@ static void sec_program_alarm(struct chg_data *chg, int seconds)
 
 static void sec_bat_work(struct work_struct *work)
 {
-	struct chg_data *chg =
-		container_of(work, struct chg_data, bat_work);
+	struct chg_data *chg = container_of(work, struct chg_data, bat_work);
 	int ret;
 	struct timespec ts;
 	unsigned long flags;
@@ -1327,8 +1326,6 @@ static __devinit int sec_battery_probe(struct platform_device *pdev)
 
 	return 0;
 
-err_supply_unreg_ac:
-	power_supply_unregister(&chg->psy_ac);
 err_supply_unreg_usb:
 	power_supply_unregister(&chg->psy_usb);
 err_supply_unreg_bat:

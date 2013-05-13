@@ -144,13 +144,13 @@ void smb136_test_read(void)
 	for(addr=0;addr<0x0c;addr++)
 	{
 		smb136_i2c_read(chg->client, addr, &data);
-		printk("SMB136 addr : 0x%02x data : 0x%02x\n", addr,data);
+		//printk("SMB136 addr : 0x%02x data : 0x%02x\n", addr,data);
 	}
 
 	for(addr=0x31;addr<0x3D;addr++)
 	{
 		smb136_i2c_read(chg->client, addr, &data);
-		printk("SMB136 addr : 0x%02x data : 0x%02x\n", addr,data);
+		//printk("SMB136 addr : 0x%02x data : 0x%02x\n", addr,data);
 	}
 }
 
