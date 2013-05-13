@@ -874,36 +874,32 @@ struct video_device s5p_tvout[] = {
 #ifdef CONFIG_MACH_P1
 void TVout_LDO_ctrl(int enable)
 {
-	int i=0;
 	int ret=0;
-	if(IS_ERR_OR_NULL(s5ptv_status.tv_tv))
-	{
+	if (IS_ERR_OR_NULL(s5ptv_status.tv_tv)) {
 		s5ptv_status.tv_tv = regulator_get(NULL, "tv");
 		if (IS_ERR(s5ptv_status.tv_tv)) {
 			printk(KERN_ERR "%s %d: failed to get resource %s\n",
 					__func__, __LINE__, "tv");
-			return PTR_ERR(s5ptv_status.tv_tv);
+			ret = PTR_ERR(s5ptv_status.tv_tv);
+			return;
 		}
 	}
-	if(IS_ERR_OR_NULL(s5ptv_status.tv_tvout))
-	{
+	if (IS_ERR_OR_NULL(s5ptv_status.tv_tvout)) {
 		s5ptv_status.tv_tvout = regulator_get(NULL, "tvout");
 		if (IS_ERR(s5ptv_status.tv_tvout)) {
 			printk(KERN_ERR "%s %d: failed to get resource %s\n",
 				__func__, __LINE__, "tvout");
-			return PTR_ERR(s5ptv_status.tv_tvout);
+			ret = PTR_ERR(s5ptv_status.tv_tvout);
+			return;
 		}
 	}
-	if(enable == true)
-	{
-		if(!IsPower_on)
-		{
+	if (enable == true) {
+		if (!IsPower_on) {
 			if (!s5ptv_status.is_reg_tv_tv_enabled) {
 				ret = regulator_enable(s5ptv_status.tv_tv);
 				if (ret)
 					s5ptv_status.is_reg_tv_tv_enabled = 1;
 			}
-
 			if (!s5ptv_status.is_reg_tv_tvout_enabled) {
 				ret = regulator_enable(s5ptv_status.tv_tvout);
 				if (ret)
@@ -913,22 +909,17 @@ void TVout_LDO_ctrl(int enable)
 			printk("%s: LDO3_8 is enabled by TV \n", __func__);
 			IsPower_on = 1;
 			msleep(120);
-	}
-	}
-	else if(enable == false)
-	{
-		if(gpio_get_value(GPIO_ACCESSORY_INT))
-		{
-		if(s5ptv_status.suspend_status)
-			msleep(520);
-
-			for(i;i<50;i++)
-		{
-			if(Isdrv_open)
-					msleep(50);
 		}
-			if((gpio_get_value(GPIO_ACCESSORY_INT))&&(IsPower_on)&& (!Isdrv_open))
-			{
+	} else if (enable == false) {
+		if (gpio_get_value(GPIO_ACCESSORY_INT)) {
+
+			if (s5ptv_status.suspend_status)
+				msleep(200);
+
+			if (Isdrv_open)
+				msleep(200);
+
+			if ((gpio_get_value(GPIO_ACCESSORY_INT))&&(IsPower_on)&& (!Isdrv_open)) {
 				if (s5ptv_status.is_reg_tv_tv_enabled) {
 					ret = regulator_force_disable(s5ptv_status.tv_tv);
 					if (ret)
@@ -955,6 +946,7 @@ void s5p_handle_cable(void)
 	char env_buf[120];
 	char *envp[2];
 	int env_offset = 0;
+	bool previous_hpd_status;
 
 	printk(KERN_INFO "%s....start", __func__);
 #ifdef CONFIG_MACH_ARIES
@@ -964,7 +956,7 @@ void s5p_handle_cable(void)
 		return;
 #endif
 
-	bool previous_hpd_status = s5ptv_status.hpd_status;
+	previous_hpd_status = s5ptv_status.hpd_status;
 #ifdef CONFIG_HDMI_HPD
 	s5ptv_status.hpd_status = s5p_hpd_get_state();
 #else
@@ -1079,7 +1071,7 @@ static int __devinit s5p_tv_probe(struct platform_device *pdev)
 {
 	int	irq_num;
 	int	ret;
-	int	i, retval;
+	int	i;
 
 	s5ptv_status.dev_fb = &pdev->dev;
 
