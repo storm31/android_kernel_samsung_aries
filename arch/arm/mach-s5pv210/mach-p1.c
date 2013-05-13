@@ -172,7 +172,7 @@ static int sec_switch_inited = 0;
 static bool fsa9480_jig_status = 0;
 static bool ap_vbus_disabled = 0;
 
-int sec_switch_set_regulator(int mode);
+void sec_switch_set_regulator(int mode);
 void otg_phy_init(void);
 
 extern bool keyboard_enable;
@@ -2615,11 +2615,6 @@ static struct i2c_board_info i2c_devs4[] __initdata = {
 #endif
 };
 
-static struct platform_device bma020_accel = {
-       .name  = "bma020-accelerometer",
-       .id    = -1,
-};
-
 static struct l3g4200d_platform_data l3g4200d_p1p2_platform_data = {
 };
 
@@ -3010,7 +3005,7 @@ int sec_switch_get_regulator(void)
 	return 0;
 }
 
-int sec_switch_set_regulator(int mode)
+void sec_switch_set_regulator(int mode)
 {
 	struct usb_gadget *gadget = platform_get_drvdata(&s3c_device_usbgadget);
 
@@ -3019,7 +3014,7 @@ int sec_switch_set_regulator(int mode)
 	if (IS_ERR_OR_NULL(reg_safeout1) ||
 		IS_ERR_OR_NULL(reg_safeout2)) {
 		pr_err("safeout regulators not initialized yet!!\n");
-		return -EINVAL;
+		return;
 	}
 
 	// note : safeout1/safeout2 register setting is not matched regulator's use_count.
@@ -3053,7 +3048,6 @@ int sec_switch_set_regulator(int mode)
 		usb_gadget_vbus_disconnect(gadget);
 		ap_vbus_disabled = 1;  // set flag
 	}
-	return 0;
 }
 
 int sec_switch_get_cable_status(void)
