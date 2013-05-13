@@ -209,6 +209,7 @@ static int sdio_disable_cd(struct mmc_card *card)
  * Devices that remain active during a system suspend are
  * put back into 1-bit mode.
  */
+#ifndef BRCM_PATCH
 static int sdio_disable_wide(struct mmc_card *card)
 {
 	int ret;
@@ -238,6 +239,7 @@ static int sdio_disable_wide(struct mmc_card *card)
 
 	return 0;
 }
+#endif
 
 
 static int sdio_enable_4bit_bus(struct mmc_card *card)
@@ -631,8 +633,9 @@ out:
  */
 static int mmc_sdio_suspend(struct mmc_host *host)
 {
-	int i, err = 0;
+	int err = 0;
 #ifndef BRCM_PATCH
+	int i;
 	for (i = 0; i < host->card->sdio_funcs; i++) {
 		struct sdio_func *func = host->card->sdio_func[i];
 		if (func && sdio_func_present(func) && func->dev.driver) {
@@ -665,8 +668,9 @@ static int mmc_sdio_suspend(struct mmc_host *host)
 
 static int mmc_sdio_resume(struct mmc_host *host)
 {
-	int i, err = 0;
+	int err = 0;
 #ifndef BRCM_PATCH
+	int i;
 	BUG_ON(!host);
 	BUG_ON(!host->card);
 

@@ -90,16 +90,12 @@ void s5pv210_setup_sdhci_cfg_card(struct platform_device *dev,
 				S3C_SDHCI_CTRL3_FCSELRX_BASIC;
 		else if (((machine_is_herring() && herring_is_cdma_wimax_dev()) ||
 					machine_is_p1()) && dev->id == 2) {
-			ctrl3 = S3C_SDHCI_CTRL3_FCSELTX_BASIC;
-			//if(card->type & MMC_TYPE_SDIO)
-				ctrl3 |= S3C_SDHCI_CTRL3_FCSELRX_BASIC;
-			//else
-			//	ctrl3 |= S3C_SDHCI_CTRL3_FCSELRX_INVERT;
+			ctrl3 = S3C_SDHCI_CTRL3_FCSELTX_BASIC |
+				S3C_SDHCI_CTRL3_FCSELRX_BASIC;
 		} else
 			ctrl3 = S3C_SDHCI_CTRL3_FCSELTX_BASIC |
 				S3C_SDHCI_CTRL3_FCSELRX_INVERT;
 	}
-
 
 	writel(ctrl2, r + S3C_SDHCI_CONTROL2);
 	writel(ctrl3, r + S3C_SDHCI_CONTROL3);
@@ -367,7 +363,9 @@ void s3c_sdhci_set_platdata(void)
 		hsmmc3_platdata.cd_type = S3C_SDHCI_CD_EXTERNAL;
 		hsmmc3_platdata.ext_cd_init = ext_cd_init_hsmmc3;
 		hsmmc3_platdata.ext_cd_cleanup = ext_cd_cleanup_hsmmc3;
+#ifndef CONFIG_MACH_P1
 		hsmmc3_platdata.built_in = 1;
+#endif
 	}
 
 	s3c_sdhci3_set_platdata(&hsmmc3_platdata);
