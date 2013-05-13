@@ -99,9 +99,9 @@ struct max8998_charger_data {
 	struct max8998_adc_table_data *adc_table;
 	int adc_array_size;
 #else // CONFIG_MACH_P1
+	struct charger_device *chgdev;
 	int (*charger_dev_register)(struct charger_device *chgdev);
 	void (*charger_dev_unregister)(struct charger_device *chgdev);
-	struct charger_device *chgdev;
 #endif
 };
 

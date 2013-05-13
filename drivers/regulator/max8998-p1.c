@@ -309,7 +309,7 @@ static int max8998_get_voltage(struct regulator_dev *rdev)
 }
 
 static int max8998_set_voltage(struct regulator_dev *rdev,
-				int min_uV, int max_uV)
+				int min_uV, int max_uV, unsigned *selector)
 {
 	struct max8998_data *max8998 = rdev_get_drvdata(rdev);
 	int min_vol = min_uV / 1000, max_vol = max_uV / 1000;
@@ -368,11 +368,9 @@ static const int safeoutvolt[] = {
   5000000
 };
 
-static int max8998_set_voltage_safeout(struct regulator_dev *rdev, int min_uV, int max_uV)
+static int max8998_set_voltage_safeout(struct regulator_dev *rdev, int min_uV, int max_uV, unsigned *selector)
 {
 	struct max8998_data *max8998 = rdev_get_drvdata(rdev);
-	struct i2c_client *i2c = max8998->iodev->i2c;
-	int min_vol = min_uV / 1000, max_vol = max_uV / 1000;
 	int previous_vol = 0;
 	int ldo = max8998_get_ldo(rdev);
 	int reg, shift = 0, mask, ret;
