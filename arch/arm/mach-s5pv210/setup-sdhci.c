@@ -323,7 +323,7 @@ void s3c_sdhci_set_platdata(void)
 	s3c_sdhci0_set_platdata(&hsmmc0_platdata);
 #endif
 #if defined(CONFIG_S3C_DEV_HSMMC1)
-	if (machine_is_aries() || machine_is_p1()) {
+	if (machine_is_aries()) {
 		hsmmc1_platdata.cd_type = S3C_SDHCI_CD_EXTERNAL;
 		hsmmc1_platdata.ext_cd_init = ext_cd_init_hsmmc1;
 		hsmmc1_platdata.ext_cd_cleanup = ext_cd_cleanup_hsmmc1;

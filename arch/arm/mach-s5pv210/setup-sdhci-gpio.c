@@ -104,6 +104,11 @@ void s5pv210_setup_sdhci2_cfg_gpio(struct platform_device *dev, int width)
 {
 	unsigned int gpio;
 
+#ifdef CONFIG_PHONE_P1_CDMA
+	unsigned int memory_enable;
+	memory_enable = S5PV210_GPJ1(1);
+#endif
+
 	switch (width) {
 	/* Channel 2 supports 4 and 8-bit bus width */
 	case 8:
@@ -131,6 +136,13 @@ void s5pv210_setup_sdhci2_cfg_gpio(struct platform_device *dev, int width)
 	default:
 		printk(KERN_ERR "Wrong SD/MMC bus width : %d\n", width);
 	}
+
+#if defined(CONFIG_PHONE_P1_CDMA)
+	s3c_gpio_cfgpin(memory_enable, S3C_GPIO_OUTPUT);
+	s3c_gpio_setpull(memory_enable, S3C_GPIO_PULL_NONE);
+	gpio_set_value(memory_enable, 1);
+#endif
+
 }
 
 void s5pv210_setup_sdhci3_cfg_gpio(struct platform_device *dev, int width)

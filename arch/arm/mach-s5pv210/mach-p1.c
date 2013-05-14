@@ -6682,23 +6682,16 @@ void s3c_config_sleep_gpio(void)
 		}
 	}
 
-
-	if(HWREV < 0x4) { // NC
-		s3c_gpio_cfgpin(GPIO_GPH10, S3C_GPIO_OUTPUT);
-		s3c_gpio_setpull(GPIO_GPH10, S3C_GPIO_PULL_NONE);
-		s3c_gpio_setpin(GPIO_GPH10, 0);
-	}
-
+	s3c_gpio_cfgpin(GPIO_GPH10, S3C_GPIO_OUTPUT);
+	s3c_gpio_setpull(GPIO_GPH10, S3C_GPIO_PULL_NONE);
+	s3c_gpio_setpin(GPIO_GPH10, 0);
 
 	s3c_gpio_cfgpin(GPIO_MHL_INT, S3C_GPIO_INPUT);
 	s3c_gpio_setpull(GPIO_MHL_INT, S3C_GPIO_PULL_DOWN);
 
-
-	if(HWREV < 0x4) { // NC
-		s3c_gpio_cfgpin(GPIO_GPH14, S3C_GPIO_OUTPUT);
-		s3c_gpio_setpull(GPIO_GPH14, S3C_GPIO_PULL_NONE);
-		s3c_gpio_setpin(GPIO_GPH14, 0);
-	}
+	s3c_gpio_cfgpin(GPIO_GPH14, S3C_GPIO_OUTPUT);
+	s3c_gpio_setpull(GPIO_GPH14, S3C_GPIO_PULL_NONE);
+	s3c_gpio_setpin(GPIO_GPH14, 0);
 
 	s3c_gpio_cfgpin(GPIO_HDMI_HPD, S3C_GPIO_INPUT);
 	s3c_gpio_setpull(GPIO_HDMI_HPD, S3C_GPIO_PULL_DOWN);
@@ -6760,18 +6753,13 @@ void s3c_config_sleep_gpio(void)
 	s3c_gpio_setpull(GPIO_MSENSE_IRQ, S3C_GPIO_PULL_UP);
 #endif
 
-	if(HWREV < 0x6) { // NC
-		s3c_gpio_cfgpin(GPIO_GPH33, S3C_GPIO_OUTPUT);
-		s3c_gpio_setpull(GPIO_GPH33, S3C_GPIO_PULL_NONE);
-		s3c_gpio_setpin(GPIO_GPH33, 0);
-	}
+	s3c_gpio_cfgpin(GPIO_GPH33, S3C_GPIO_OUTPUT);
+	s3c_gpio_setpull(GPIO_GPH33, S3C_GPIO_PULL_NONE);
+	s3c_gpio_setpin(GPIO_GPH33, 0);
 
-
-	if(HWREV < 11) { // NC
-		s3c_gpio_cfgpin(GPIO_GPH35, S3C_GPIO_OUTPUT);
-		s3c_gpio_setpull(GPIO_GPH35, S3C_GPIO_PULL_NONE);
-		s3c_gpio_setpin(GPIO_GPH35, 0);
-	}
+	s3c_gpio_cfgpin(GPIO_GPH35, S3C_GPIO_OUTPUT);
+	s3c_gpio_setpull(GPIO_GPH35, S3C_GPIO_PULL_NONE);
+	s3c_gpio_setpin(GPIO_GPH35, 0);
 
 	if(HWREV >= 0x4) {  // NC
 		s3c_gpio_cfgpin(GPIO_GPH36, S3C_GPIO_INPUT);
