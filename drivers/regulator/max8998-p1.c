@@ -105,8 +105,6 @@ static const struct voltage_map_desc *ldo_voltage_map[] = {
 	&buck12_voltage_map_desc,	/* BUCK2 */
 	&buck3_voltage_map_desc,	/* BUCK3 */
 	&buck4_voltage_map_desc,	/* BUCK4 */
-	NULL,
-	NULL,
 };
 
 static inline int max8998_get_ldo(struct regulator_dev *rdev)
@@ -185,6 +183,7 @@ static int max8998_get_enable_register(struct regulator_dev *rdev,
 static int max8998_ldo_is_enabled(struct regulator_dev *rdev)
 {
 	struct max8998_data *max8998 = rdev_get_drvdata(rdev);
+	struct i2c_client *i2c = max8998->iodev->i2c;
 	int ret, reg, shift = 8;
 	u8 val;
 
@@ -192,7 +191,7 @@ static int max8998_ldo_is_enabled(struct regulator_dev *rdev)
 	if (ret)
 		return ret;
 
-	ret = max8998_read_reg(max8998->iodev, reg, &val);
+	ret = max8998_read_reg(i2c, reg, &val);
 	if (ret)
 		return ret;
 
@@ -202,25 +201,27 @@ static int max8998_ldo_is_enabled(struct regulator_dev *rdev)
 static int max8998_ldo_enable(struct regulator_dev *rdev)
 {
 	struct max8998_data *max8998 = rdev_get_drvdata(rdev);
+	struct i2c_client *i2c = max8998->iodev->i2c;
 	int reg, shift = 8, ret;
 
 	ret = max8998_get_enable_register(rdev, &reg, &shift);
 	if (ret)
 		return ret;
 
-	return max8998_update_reg(max8998->iodev, reg, 1<<shift, 1<<shift);
+	return max8998_update_reg(i2c, reg, 1<<shift, 1<<shift);
 }
 
 static int max8998_ldo_disable(struct regulator_dev *rdev)
 {
 	struct max8998_data *max8998 = rdev_get_drvdata(rdev);
+	struct i2c_client *i2c = max8998->iodev->i2c;
 	int reg, shift = 8, ret;
 
 	ret = max8998_get_enable_register(rdev, &reg, &shift);
 	if (ret)
 		return ret;
 
-	return max8998_update_reg(max8998->iodev, reg, 0, 1<<shift);
+	return max8998_update_reg(i2c, reg, 0, 1<<shift);
 }
 
 static int max8998_get_voltage_register(struct regulator_dev *rdev,
@@ -291,6 +292,7 @@ static int max8998_get_voltage_register(struct regulator_dev *rdev,
 static int max8998_get_voltage(struct regulator_dev *rdev)
 {
 	struct max8998_data *max8998 = rdev_get_drvdata(rdev);
+	struct i2c_client *i2c = max8998->iodev->i2c;
 	int reg, shift = 0, mask, ret;
 	u8 val;
 
@@ -298,7 +300,7 @@ static int max8998_get_voltage(struct regulator_dev *rdev)
 	if (ret)
 		return ret;
 
-	ret = max8998_read_reg(max8998->iodev, reg, &val);
+	ret = max8998_read_reg(i2c, reg, &val);
 	if (ret)
 		return ret;
 
@@ -312,6 +314,7 @@ static int max8998_set_voltage(struct regulator_dev *rdev,
 				int min_uV, int max_uV, unsigned *selector)
 {
 	struct max8998_data *max8998 = rdev_get_drvdata(rdev);
+	struct i2c_client *i2c = max8998->iodev->i2c;
 	int min_vol = min_uV / 1000, max_vol = max_uV / 1000;
 	int previous_vol = 0;
 	const struct voltage_map_desc *desc;
@@ -346,14 +349,14 @@ static int max8998_set_voltage(struct regulator_dev *rdev,
 	/* wait for RAMP_UP_DELAY if rdev is BUCK1/2 and
 	 * ENRAMP is ON */
 	if (ldo == MAX8998_BUCK1 || ldo == MAX8998_BUCK2) {
-		max8998_read_reg(max8998->iodev, MAX8998_REG_ONOFF4, &val);
+		max8998_read_reg(i2c, MAX8998_REG_ONOFF4, &val);
 		if (val & (1 << 4)) {
 			en_ramp = true;
 			previous_vol = max8998_get_voltage(rdev);
 		}
 	}
 
-	ret = max8998_update_reg(max8998->iodev, reg, i<<shift, mask<<shift);
+	ret = max8998_update_reg(i2c, reg, i<<shift, mask<<shift);
 
 	if (en_ramp == true) {
 		int difference = desc->min + desc->step*i - previous_vol/1000;
@@ -371,6 +374,7 @@ static const int safeoutvolt[] = {
 static int max8998_set_voltage_safeout(struct regulator_dev *rdev, int min_uV, int max_uV, unsigned *selector)
 {
 	struct max8998_data *max8998 = rdev_get_drvdata(rdev);
+	struct i2c_client *i2c = max8998->iodev->i2c;
 	int previous_vol = 0;
 	int ldo = max8998_get_ldo(rdev);
 	int reg, shift = 0, mask, ret;
@@ -394,7 +398,7 @@ static int max8998_set_voltage_safeout(struct regulator_dev *rdev, int min_uV, i
 	if (ret)
 		return ret;
 
-	ret = max8998_update_reg(max8998->iodev, reg,i<<shift, mask<<shift);
+	ret = max8998_update_reg(i2c, reg,i<<shift, mask<<shift);
 
 	if (en_ramp == true) {
 		int difference = safeoutvolt[i] - previous_vol/1000;
@@ -684,6 +688,7 @@ static int __devexit max8998_pmic_remove(struct platform_device *pdev)
 
 static const struct platform_device_id max8998_pmic_id[] = {
 	{ "max8998-pmic", TYPE_MAX8998 },
+	{ "lp3974-pmic", TYPE_LP3974 },
 	{ }
 };
 MODULE_DEVICE_TABLE(platform, max8998_pmic_id);

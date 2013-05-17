@@ -7415,9 +7415,8 @@ static void __init p1_machine_init(void)
 		i2c_devs5[ARRAY_SIZE(i2c_devs5)-1].addr += 1;						// From HW rev 0.9, slave addres is changed from 0x68 to 0x69
 		i2c_register_board_info(5, i2c_devs5, ARRAY_SIZE(i2c_devs5));
 	}
-	/* magnetic and light sensor */
-	i2c_register_board_info(10, i2c_devs10, ARRAY_SIZE(i2c_devs10));
 
+	/* max8998 */
 	i2c_register_board_info(6, i2c_devs6, ARRAY_SIZE(i2c_devs6));
 	/* FSA9480 */
 	fsa9480_gpio_init();
@@ -7426,6 +7425,9 @@ static void __init p1_machine_init(void)
 	/* max17042 */
 	max17042_gpio_init();
 	i2c_register_board_info(9, i2c_devs9, ARRAY_SIZE(i2c_devs9));
+
+	/* magnetic and light sensor */
+	i2c_register_board_info(10, i2c_devs10, ARRAY_SIZE(i2c_devs10));
 
 	/* smb136 */
 	smb136_gpio_init();

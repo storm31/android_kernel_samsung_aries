@@ -135,7 +135,7 @@ struct max8998_platform_data {
 	int				irq_base;
 	int				ono;
 #ifdef CONFIG_MACH_ARIES
-	bool				buck_voltage_lock;
+	bool			buck_voltage_lock;
 	int				buck1_voltage1;
 	int				buck1_voltage2;
 	int				buck1_voltage3;
@@ -147,9 +147,9 @@ struct max8998_platform_data {
 	int				buck1_default_idx;
 	int				buck2_set3;
 	int				buck2_default_idx;
-	bool				wakeup;
-	bool				rtc_delay;
 #endif
+	bool			wakeup;
+	bool			rtc_delay;
 	struct max8998_charger_data	*charger;
 };
 

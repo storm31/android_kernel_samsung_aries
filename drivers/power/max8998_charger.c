@@ -31,6 +31,7 @@ struct max8998_chg_data {
 	struct max8998_dev	*iodev;
 	struct max8998_charger_data *pdata;
 	struct charger_device *chgdev;
+	struct i2c_client *i2c;
 };
 
 static struct max8998_chg_data *max8998_chg;  // for local use
@@ -42,7 +43,7 @@ static int max8998_check_vdcin(void)
 	u8 data = 0;
 	int ret;
 
-	ret = max8998_read_reg(chg->iodev, MAX8998_REG_STATUS2, &data);
+	ret = max8998_read_reg(chg->i2c, MAX8998_REG_STATUS2, &data);
 
 	if (ret < 0) {
 		pr_err("max8998_read_reg error\n");
@@ -59,7 +60,7 @@ static int max8998_charging_control(int en, int cable_status)
 
 	if (!en) {
 		/* disable charging */
-		ret = max8998_update_reg(chg->iodev, MAX8998_REG_CHGR2,
+		ret = max8998_update_reg(chg->i2c, MAX8998_REG_CHGR2,
 			(1 << MAX8998_SHIFT_CHGEN), MAX8998_MASK_CHGEN);
 		if (ret < 0)
 			goto err;
@@ -69,17 +70,17 @@ static int max8998_charging_control(int en, int cable_status)
 		/* enable charging */
 		if (cable_status == CABLE_TYPE_AC) {
 			/* ac */
-			ret = max8998_update_reg(chg->iodev, MAX8998_REG_CHGR1,
+			ret = max8998_update_reg(chg->i2c, MAX8998_REG_CHGR1,
 				(2 << MAX8998_SHIFT_TOPOFF), MAX8998_MASK_TOPOFF);
 			if (ret < 0)
 				goto err;
 
-			ret = max8998_update_reg(chg->iodev, MAX8998_REG_CHGR1,
+			ret = max8998_update_reg(chg->i2c, MAX8998_REG_CHGR1,
 				(5 << MAX8998_SHIFT_ICHG), MAX8998_MASK_ICHG);
 			if (ret < 0)
 				goto err;
 
-			ret = max8998_update_reg(chg->iodev, MAX8998_REG_CHGR2,
+			ret = max8998_update_reg(chg->i2c, MAX8998_REG_CHGR2,
 				(2 << MAX8998_SHIFT_ESAFEOUT), MAX8998_MASK_ESAFEOUT);
 			if (ret < 0)
 				goto err;
@@ -88,17 +89,17 @@ static int max8998_charging_control(int en, int cable_status)
 
 		} else {
 			/* usb */
-			ret = max8998_update_reg(chg->iodev, MAX8998_REG_CHGR1,
+			ret = max8998_update_reg(chg->i2c, MAX8998_REG_CHGR1,
 				(6 << MAX8998_SHIFT_TOPOFF), MAX8998_MASK_TOPOFF);
 			if (ret < 0)
 				goto err;
 
-			ret = max8998_update_reg(chg->iodev, MAX8998_REG_CHGR1,
+			ret = max8998_update_reg(chg->i2c, MAX8998_REG_CHGR1,
 				(2 << MAX8998_SHIFT_ICHG), MAX8998_MASK_ICHG);
 			if (ret < 0)
 				goto err;
 
-			ret = max8998_update_reg(chg->iodev, MAX8998_REG_CHGR2,
+			ret = max8998_update_reg(chg->i2c, MAX8998_REG_CHGR2,
 				(3 << MAX8998_SHIFT_ESAFEOUT), MAX8998_MASK_ESAFEOUT);
 			if (ret < 0)
 				goto err;
@@ -106,7 +107,7 @@ static int max8998_charging_control(int en, int cable_status)
 			pr_debug("%s : USB charging enabled", __func__);
 		}
 
-		ret = max8998_update_reg(chg->iodev, MAX8998_REG_CHGR2,
+		ret = max8998_update_reg(chg->i2c, MAX8998_REG_CHGR2,
 			(0 << MAX8998_SHIFT_CHGEN), MAX8998_MASK_CHGEN);
 		if (ret < 0)
 			goto err;
@@ -123,6 +124,7 @@ static __devinit int max8998_charger_probe(struct platform_device *pdev)
 {
 	struct max8998_dev *iodev = dev_get_drvdata(pdev->dev.parent);
 	struct max8998_platform_data *pdata = dev_get_platdata(iodev->dev);
+	struct i2c_client *i2c = iodev->i2c;
 	struct max8998_chg_data *chg;
 	int ret = 0;
 
@@ -135,6 +137,7 @@ static __devinit int max8998_charger_probe(struct platform_device *pdev)
 	chg->iodev = iodev;
 	chg->pdata = pdata->charger;
 	chg->chgdev = chg->pdata->chgdev;
+	chg->i2c = i2c;
 
 	max8998_chg = chg;  // set local
 
@@ -144,22 +147,22 @@ static __devinit int max8998_charger_probe(struct platform_device *pdev)
 		goto err_pdata;
 	}
 
-	ret = max8998_update_reg(iodev, MAX8998_REG_CHGR1, /* disable */
+	ret = max8998_update_reg(i2c, MAX8998_REG_CHGR1, /* disable */
 		(0x3 << MAX8998_SHIFT_RSTR), MAX8998_MASK_RSTR);
 	if (ret < 0)
 		goto err_kfree;
 
-	ret = max8998_update_reg(iodev, MAX8998_REG_CHGR2, /* 6 Hr */
+	ret = max8998_update_reg(i2c, MAX8998_REG_CHGR2, /* 6 Hr */
 		(0x2 << MAX8998_SHIFT_FT), MAX8998_MASK_FT);
 	if (ret < 0)
 		goto err_kfree;
 
-	ret = max8998_update_reg(iodev, MAX8998_REG_CHGR2, /* 4.2V */
+	ret = max8998_update_reg(i2c, MAX8998_REG_CHGR2, /* 4.2V */
 		(0x0 << MAX8998_SHIFT_BATTSL), MAX8998_MASK_BATTSL);
 	if (ret < 0)
 		goto err_kfree;
 
-	ret = max8998_update_reg(iodev, MAX8998_REG_CHGR2, /* 105c */
+	ret = max8998_update_reg(i2c, MAX8998_REG_CHGR2, /* 105c */
 		(0x0 << MAX8998_SHIFT_TMP), MAX8998_MASK_TMP);
 	if (ret < 0)
 		goto err_kfree;
