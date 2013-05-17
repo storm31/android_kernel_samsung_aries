@@ -19,12 +19,15 @@
 #include <linux/mmc/host.h>
 #include <linux/mmc/card.h>
 
-#ifdef CONFIG_MACH_P1
-#include <mach/gpio-p1.h>
-#endif
 #include <plat/gpio-cfg.h>
 #include <plat/regs-sdhci.h>
 #include <plat/sdhci.h>
+
+#ifdef CONFIG_MACH_P1
+#include <mach/gpio.h>
+#include <mach/gpio-p1.h>
+#endif
+
 
 #include "herring.h"
 
