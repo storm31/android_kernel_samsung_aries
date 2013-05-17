@@ -31,6 +31,7 @@
 #include <linux/irq.h>
 #include <linux/skbuff.h>
 #include <linux/console.h>
+#include <linux/ion.h>
 
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
@@ -375,6 +376,8 @@ static struct s3cfb_lcd lvds = {
 #define  S5PV210_ANDROID_PMEM_MEMSIZE_PMEM_GPU1 (4200 * SZ_1K)
 #define  S5PV210_ANDROID_PMEM_MEMSIZE_PMEM_ADSP (1500 * SZ_1K)
 #define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_TEXTSTREAM (4800 * SZ_1K)
+#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_ION (S5PV210_LCD_WIDTH * \
+						 S5PV210_LCD_HEIGHT * 4 * 3)
 
 static struct s5p_media_device p1_media_devs[] = {
 	[0] = {
@@ -428,7 +431,15 @@ static struct s5p_media_device p1_media_devs[] = {
 		.memsize = S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMD,
 		.paddr = 0,
 	},
-#ifdef CONFIG_ANDROID_PMEM
+#ifdef CONFIG_ION_S5P
+	[7] = {
+		.id = S5P_MDEV_ION,
+		.name = "ion",
+		.bank = 1,
+		.memsize = S5PV210_VIDEO_SAMSUNG_MEMSIZE_ION,
+		.paddr = 0,
+	},
+#else ifdef CONFIG_ANDROID_PMEM
 	[7] = {
 		.id = S5P_MDEV_PMEM,
 		.name = "pmem",
@@ -7105,6 +7116,40 @@ static struct platform_device p1_keyboard = {
         .id    = -1,
 };
 
+#ifdef CONFIG_ION_S5P
+
+static struct ion_platform_data ion_s5p_data = {
+	.nr = 2,
+	.heaps = {
+		{
+			.type = ION_HEAP_TYPE_SYSTEM,
+			.id = ION_HEAP_TYPE_SYSTEM,
+			.name = "system",
+		},
+		{
+			.type = ION_HEAP_TYPE_CARVEOUT,
+			.id = ION_HEAP_TYPE_CARVEOUT,
+			.name = "carveout",
+		},
+	},
+};
+
+static struct platform_device ion_s5p_device = {
+	.name = "ion-s5p",
+	.id = -1,
+	.dev = {
+		.platform_data = &ion_s5p_data,
+	},
+};
+
+static void ion_s5p_set_platdata(void)
+{
+	ion_s5p_data.heaps[1].base = s5p_get_media_memory_bank(S5P_MDEV_ION, 1);
+	ion_s5p_data.heaps[1].size = s5p_get_media_memsize_bank(S5P_MDEV_ION, 1);
+}
+
+#endif /* CONFIG_ION_S5P */
+
 static struct platform_device *p1_devices[] __initdata = {
 	&watchdog_device,
 #ifdef CONFIG_FIQ_DEBUGGER
@@ -7246,6 +7291,10 @@ static struct platform_device *p1_devices[] __initdata = {
 	&sec_device_dpram,
 #endif
 	&samsung_asoc_dma,
+
+#ifdef CONFIG_ION_S5P
+	&ion_s5p_device,
+#endif
 };
 
 unsigned int HWREV;
@@ -7493,6 +7542,10 @@ static void __init p1_machine_init(void)
 
 #ifdef CONFIG_ANDROID_PMEM
 	android_pmem_set_platdata();
+#endif
+
+#ifdef CONFIG_ION_S5P
+	ion_s5p_set_platdata();
 #endif
 
 	gpio_request(GPIO_TOUCH_EN, "touch en");
