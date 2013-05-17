@@ -115,9 +115,7 @@ struct fsa9480_usbsw {
 	int				mansw;
 };
 
-#ifdef CONFIG_MACH_P1
 static struct fsa9480_usbsw *local_usbsw;
-#endif
 
 static ssize_t fsa9480_show_control(struct device *dev,
 				   struct device_attribute *attr,
@@ -297,7 +295,6 @@ int cardock_status = 0;
 int deskdock_status = 0;
 #endif
 
-#ifdef CONFIG_MACH_P1
 void fsa9480_manual_switching(int path)
 {
 	struct i2c_client *client = local_usbsw->client;
@@ -349,7 +346,6 @@ void fsa9480_manual_switching(int path)
 		dev_err(&client->dev, "%s: err %d\n", __func__, ret);
 
 }
-#endif
 
 static void fsa9480_detect_dev(struct fsa9480_usbsw *usbsw)
 {
@@ -364,33 +360,18 @@ static void fsa9480_detect_dev(struct fsa9480_usbsw *usbsw)
 
 	val1 = device_type & 0xff;
 	val2 = device_type >> 8;
-#ifdef CONFIG_MACH_ARIES
-	dev_info(&client->dev, "dev1: 0x%x, dev2: 0x%x\n", val1, val2);
-#else // CONFIG_MACH_P1
 	dev_info(&client->dev, "prev_dev1: 0x%x, prev_dev2: 0x%x\n", usbsw->dev1, usbsw->dev2);
 	dev_info(&client->dev, "new_dev1: 0x%x, new_dev2: 0x%x\n", val1, val2);
-#endif
 
 	/* Attached */
 	if (val1 || val2) {
 		/* USB */
-#ifdef CONFIG_MACH_ARIES
 		if (val1 & DEV_T1_USB_MASK || val2 & DEV_T2_USB_MASK) {
 			if (pdata->usb_cb)
 				pdata->usb_cb(FSA9480_ATTACHED);
 			if (usbsw->mansw) {
 				ret = i2c_smbus_write_byte_data(client,
 					FSA9480_REG_MANSW1, usbsw->mansw);
-#else // CONFIG_MACH_P1
-		if (val1 & DEV_T1_USB_MASK /*|| (val2 & DEV_T2_USB_MASK)*/) { // Remove Jig USB
-			if(pdata->set_usb_switch)
-				pdata->set_usb_switch();
-			if (pdata->usb_cb)
-                pdata->usb_cb(FSA9480_ATTACHED);
-			if (local_usbsw->mansw) {
-				ret = i2c_smbus_write_byte_data(client,
-					FSA9480_REG_MANSW1, local_usbsw->mansw);
-#endif // CONFIG_MACH_P1
 				if (ret < 0)
 					dev_err(&client->dev,
 						"%s: err %d\n", __func__, ret);
@@ -486,13 +467,8 @@ static void fsa9480_detect_dev(struct fsa9480_usbsw *usbsw)
 	/* Detached */
 	} else {
 		/* USB */
-#ifdef CONFIG_MACH_ARIES
 		if (usbsw->dev1 & DEV_T1_USB_MASK ||
 				usbsw->dev2 & DEV_T2_USB_MASK) {
-#else // CONFIG_MACH_P1
-		if (usbsw->dev1 & DEV_T1_USB_MASK
-				/*|| usbsw->dev2 & DEV_T2_USB_MASK*/ ) {  // Remove Jig USB
-#endif
 			if (pdata->usb_cb)
 				pdata->usb_cb(FSA9480_DETACHED);
 		/* UART */
@@ -651,11 +627,7 @@ static int fsa9480_irq_init(struct fsa9480_usbsw *usbsw)
 
 	if (client->irq) {
 		ret = request_threaded_irq(client->irq, NULL,
-#if defined(CONFIG_MACH_ARIES)
 			fsa9480_irq_thread, IRQF_TRIGGER_LOW | IRQF_ONESHOT,
-#else // CONFIG_MACH_P1
-			fsa9480_irq_thread, IRQF_TRIGGER_FALLING,
-#endif
 			"fsa9480 micro USB", usbsw);
 		if (ret) {
 			dev_err(&client->dev, "failed to reqeust IRQ\n");
@@ -698,13 +670,7 @@ static int __devinit fsa9480_probe(struct i2c_client *client,
 		usbsw->pdata->cfg_gpio();
 
 	fsa9480_reg_init(usbsw);
-#ifdef CONFIG_MACH_P1
 	local_usbsw = usbsw;  // temp
-
-	// set fsa9480 init flag.
-	if (usbsw->pdata->set_init_flag)
-		usbsw->pdata->set_init_flag();
-#endif
 
 	ret = fsa9480_irq_init(usbsw);
 	if (ret)
