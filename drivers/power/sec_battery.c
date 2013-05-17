@@ -24,8 +24,8 @@
 #include <linux/irq.h>
 #include <linux/jiffies.h>
 #include <linux/kernel.h>
-#include <linux/sec_battery.h>
-#include <linux/max17042_battery.h>
+#include <linux/power/sec_battery.h>
+#include <linux/power/max17042_battery.h>
 #include <linux/fsa9480.h>
 #include <linux/module.h>
 #include <linux/mutex.h>

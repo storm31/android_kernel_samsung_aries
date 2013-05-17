@@ -18,8 +18,8 @@
 #include <linux/i2c-gpio.h>
 #include <linux/regulator/consumer.h>
 #include <linux/mfd/max8998.h>
-#include <linux/smb136_charger.h>
-#include <linux/sec_battery.h>
+#include <linux/power/smb136_charger.h>
+#include <linux/power/sec_battery.h>
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/usb/ch9.h>
@@ -105,7 +105,7 @@
 #include <linux/i2c/l3g4200d.h>
 #include <../../../drivers/input/misc/bma020.h>
 #include <../../../drivers/video/samsung/s3cfb.h>
-#include <linux/max17042_battery.h>
+#include <linux/power/max17042_battery.h>
 #include <linux/switch.h>
 
 #if defined(CONFIG_KEYBOARD_GPIO)
