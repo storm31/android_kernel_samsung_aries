@@ -4,6 +4,8 @@
 #include <linux/delay.h>
 #include <linux/gpio.h>
 #include <linux/workqueue.h>
+#include <linux/timer.h>
+#include <linux/wakelock.h>
 #include <linux/irq.h>
 #include <linux/interrupt.h>
 #include <linux/i2c.h>
@@ -20,7 +22,8 @@
 	printk ("[ "SUBJECT " (%s,%d) ] " format "\n", __func__, __LINE__, ## __VA_ARGS__);
 
 #define ACCESSORY_ID 4
-#define DETECTION_INTR_DELAY	 	get_jiffies_64() + (HZ*(1/10))// 20s
+#define DETECTION_INTR_DELAY	(HZ*20) // 20 sec
+#define WAKE_LOCK_TIME		(HZ * 5)	/* 5 sec */
 #define IRQ_ACCESSORY_INT	IRQ_EINT5
 #define IRQ_DOCK_INT	IRQ_EINT(29)
 #define IRQ_MHL_INT		IRQ_EINT10
@@ -46,14 +49,8 @@ static unsigned int intr_count = 0;
 #endif
 
 extern int s3c_adc_get_adc_data(int channel);
-
-#if defined(CONFIG_KEYBOARD_P1)
 extern int check_keyboard_dock(int val);
-#endif
-
 extern unsigned int HWREV;
-
-#ifdef CONFIG_MHL_SII9234
 extern void sii9234_tpi_init(void);
 extern void MHD_GPIO_INIT(void);
 extern void MHD_HW_Reset(void);
@@ -70,7 +67,6 @@ extern struct i2c_driver SII9234B_i2c_driver;
 extern struct i2c_driver SII9234C_i2c_driver;
 
 extern void TVout_LDO_ctrl(int enable);
-#endif
 
 static struct device *acc_dev;
 
@@ -83,6 +79,8 @@ static struct work_struct acc_ID_work;
 
 static struct workqueue_struct *acc_MHD_workqueue;
 static struct work_struct acc_MHD_work;
+static struct wake_lock acc_con_wake_lock;
+static struct wake_lock acc_id_wake_lock;
 
 void acc_con_interrupt_init(void);
 static int connector_detect_change(void);
@@ -150,17 +148,6 @@ static ssize_t acc_check_write(struct device *dev, struct device_attribute *attr
 
 static DEVICE_ATTR(acc_file, S_IRUGO , acc_check_read, acc_check_write);
 
-void acc_TA_check(int On)
-{
-	if (!gpio_get_value(GPIO_ACCESSORY_INT)) {
-		if (On == FALSE)
-			MHD_HW_Off();
-		else if ((On == TRUE) && (CONNECTED_DOCK == DOCK_DESK) )
-			sii9234_tpi_init();
-	}
-}
-EXPORT_SYMBOL(acc_TA_check);
-
 static int connector_detect_change(void)
 {
 	int adc = 0,i,adc_sum=0;
@@ -191,7 +178,6 @@ void acc_dock_check(int dock, int state)
 	char env_buf[60];
 	char stat_buf[60];
     char *envp[3];
-    int env_offset = 0;
 	memset(env_buf, 0, sizeof(env_buf));
 	memset(stat_buf, 0, sizeof(stat_buf));
 
@@ -211,9 +197,9 @@ void acc_dock_check(int dock, int state)
 	else
 		sprintf(stat_buf, "STATE=unknown");
 
-	envp[env_offset++] = env_buf;
-	envp[env_offset++] = stat_buf;
-	envp[env_offset] = NULL;
+	envp[0] = env_buf;
+	envp[1] = stat_buf;
+	envp[2] = NULL;
 	kobject_uevent_env(&acc_dev->kobj, KOBJ_CHANGE, envp);
 	ACC_CONDEV_DBG("%s : %s",env_buf,stat_buf);
 }
@@ -227,36 +213,20 @@ void acc_con_intr_handle(struct work_struct *_work)
 		if (1==cur_state) {
 			ACC_CONDEV_DBG("docking station detatched!!!");
 			DOCK_STATE = cur_state;
-
-#if defined(CONFIG_KEYBOARD_P1)
 			check_keyboard_dock(cur_state);
-#endif
-
-#ifdef CONFIG_MHL_SII9234
 			MHD_HW_Off();
 			TVout_LDO_ctrl(false);
-#endif
-
 			acc_dock_check(CONNECTED_DOCK , DOCK_STATE);
 			CONNECTED_DOCK = 0;
 		} else if (0==cur_state) {
 			ACC_CONDEV_DBG("docking station attatched!!!");
 			DOCK_STATE = cur_state;
-
-#if defined(CONFIG_KEYBOARD_P1)
 			if (check_keyboard_dock(cur_state))
 				CONNECTED_DOCK = DOCK_KEYBD;
-			else
-#endif
-
-			{
-
-#ifdef CONFIG_MHL_SII9234
+			else {
 				CONNECTED_DOCK = DOCK_DESK;
 				TVout_LDO_ctrl(true);
 				sii9234_tpi_init();
-#endif
-
 			}
 			acc_dock_check(CONNECTED_DOCK , DOCK_STATE);
 		}
@@ -280,6 +250,8 @@ void acc_con_interrupt_init(void)
 	s3c_gpio_cfgpin(GPIO_ACCESSORY_INT, S3C_GPIO_SFN(GPIO_ACCESSORY_INT_AF));
 	s3c_gpio_setpull(GPIO_ACCESSORY_INT, S3C_GPIO_PULL_UP);
 	irq_set_irq_type(IRQ_ACCESSORY_INT, IRQ_TYPE_EDGE_BOTH);
+
+	wake_lock_timeout(&acc_con_wake_lock, WAKE_LOCK_TIME);
 
 	ret = request_irq(IRQ_ACCESSORY_INT, acc_con_interrupt, IRQF_DISABLED, "Docking Detected", NULL);
 	if (ret)
@@ -411,6 +383,8 @@ void acc_ID_interrupt_init(void)
 	s3c_gpio_setpull(GPIO_DOCK_INT, S3C_GPIO_PULL_NONE);
 	irq_set_irq_type(IRQ_DOCK_INT, IRQ_TYPE_EDGE_BOTH);
 
+	wake_lock_timeout(&acc_id_wake_lock, WAKE_LOCK_TIME);
+
 	ret = request_irq(IRQ_DOCK_INT, acc_ID_interrupt, IRQF_DISABLED, "Accessory Detected", NULL);
 	if (ret)
 		ACC_CONDEV_DBG("Fail to register IRQ : GPIO_DOCK_INT return : %d\n",ret);
@@ -449,38 +423,40 @@ static int acc_con_probe(struct platform_device *pdev)
 	ACC_CONDEV_DBG("");
 	acc_dev = &pdev->dev;
 
-#ifdef CONFIG_MHL_SII9234
-		retval = i2c_add_driver(&SII9234A_i2c_driver);
-		if (retval != 0)
-			printk("[MHL SII9234A] can't add i2c driver\n");
-		else
-			printk("[MHL SII9234A] add i2c driver\n");
+	retval = i2c_add_driver(&SII9234A_i2c_driver);
+	if (retval != 0)
+		printk("[MHL SII9234A] can't add i2c driver\n");
+	else
+		printk("[MHL SII9234A] add i2c driver\n");
 
-		retval = i2c_add_driver(&SII9234B_i2c_driver);
-		if (retval != 0)
-			printk("[MHL SII9234B] can't add i2c driver\n");
-		else
-			printk("[MHL SII9234B] add i2c driver\n");
+	retval = i2c_add_driver(&SII9234B_i2c_driver);
+	if (retval != 0)
+		printk("[MHL SII9234B] can't add i2c driver\n");
+	else
+		printk("[MHL SII9234B] add i2c driver\n");
 
-		retval = i2c_add_driver(&SII9234C_i2c_driver);
-		if (retval != 0)
-			printk("[MHL SII9234C] can't add i2c driver\n");
-		else
-			printk("[MHL SII9234C] add i2c driver\n");
+	retval = i2c_add_driver(&SII9234C_i2c_driver);
+	if (retval != 0)
+		printk("[MHL SII9234C] can't add i2c driver\n");
+	else
+		printk("[MHL SII9234C] add i2c driver\n");
 
-		retval = i2c_add_driver(&SII9234_i2c_driver);
-		if (retval != 0)
-			printk("[MHL SII9234] can't add i2c driver\n");
-		else
-			printk("[MHL SII9234] add i2c driver\n");
+	retval = i2c_add_driver(&SII9234_i2c_driver);
+	if (retval != 0)
+		printk("[MHL SII9234] can't add i2c driver\n");
+	else
+		printk("[MHL SII9234] add i2c driver\n");
 
 	MHD_GPIO_INIT();
 	MHD_HW_Off();
-#endif
+
+	wake_lock_init(&acc_con_wake_lock, WAKE_LOCK_SUSPEND, "sec_30pin_acc_con");
 
 	INIT_WORK(&acc_con_work, acc_con_intr_handle);
 	acc_con_workqueue = create_singlethread_workqueue("acc_con_workqueue");
 	acc_con_interrupt_init();
+
+	wake_lock_init(&acc_id_wake_lock, WAKE_LOCK_SUSPEND, "sec_30pin_acc_id");
 
 	INIT_WORK(&acc_ID_work, acc_ID_intr_handle);
 	acc_ID_workqueue = create_singlethread_workqueue("acc_ID_workqueue");
@@ -492,8 +468,8 @@ static int acc_con_probe(struct platform_device *pdev)
 	if (device_create_file(acc_dev, &dev_attr_acc_file) < 0)
 		printk("Failed to create device file(%s)!\n", dev_attr_acc_file.attr.name);
 
-        enable_irq_wake(IRQ_ACCESSORY_INT);
-        enable_irq_wake(IRQ_DOCK_INT);
+	enable_irq_wake(IRQ_ACCESSORY_INT);
+	enable_irq_wake(IRQ_DOCK_INT);
 
 	return 0;
 }
@@ -502,13 +478,13 @@ static int acc_con_remove(struct platform_device *pdev)
 {
 	ACC_CONDEV_DBG("");
 
-#ifdef CONFIG_MHL_SII9234
 	i2c_del_driver(&SII9234A_i2c_driver);
 	i2c_del_driver(&SII9234B_i2c_driver);
 	i2c_del_driver(&SII9234C_i2c_driver);
 	i2c_del_driver(&SII9234_i2c_driver);
-#endif
 
+	wake_lock_destroy(&acc_con_wake_lock);
+	wake_lock_destroy(&acc_id_wake_lock);
     disable_irq_wake(IRQ_ACCESSORY_INT);
     disable_irq_wake(IRQ_DOCK_INT);
 	return 0;
@@ -517,38 +493,19 @@ static int acc_con_remove(struct platform_device *pdev)
 static int acc_con_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	ACC_CONDEV_DBG("");
-
-#ifdef CONFIG_MHL_SII9234
 	MHD_HW_Off();
-#endif
-
 	return 0;
 }
 
 static int acc_con_resume(struct platform_device *pdev)
 {
 	ACC_CONDEV_DBG("");
-
-#ifdef CONFIG_MHL_SII9234
 	if (0 == gpio_get_value(GPIO_ACCESSORY_INT))
 		if (CONNECTED_DOCK == DOCK_DESK)
 			sii9234_tpi_init();
-#endif
-
 	return 0;
 }
 
-
-static int __init acc_con_init(void)
-{
-	ACC_CONDEV_DBG("");
-	return platform_driver_register(&acc_con_driver);
-}
-
-static void __exit acc_con_exit(void)
-{
-	platform_driver_unregister(&acc_con_driver);
-}
 
 static struct platform_driver acc_con_driver = {
 	.probe		= acc_con_probe,
@@ -561,6 +518,16 @@ static struct platform_driver acc_con_driver = {
 	},
 };
 
+static int __init acc_con_init(void)
+{
+	ACC_CONDEV_DBG("");
+	return platform_driver_register(&acc_con_driver);
+}
+
+static void __exit acc_con_exit(void)
+{
+	platform_driver_unregister(&acc_con_driver);
+}
 
 late_initcall(acc_con_init);
 module_exit(acc_con_exit);

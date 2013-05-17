@@ -42,7 +42,9 @@ struct fsa9480_platform_data {
 #endif
 };
 
+#ifdef CONFIG_MACH_ARIES
 extern int fsa9480_get_dock_status(void);
+#endif
 
 #ifdef CONFIG_MACH_P1
 enum {
