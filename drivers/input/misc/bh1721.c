@@ -164,6 +164,14 @@ static void bh1721_light_enable(struct bh1721_data *bh1721)
 {
 	printk("[Light Sensor] starting poll timer, delay %lldns\n",
 		    ktime_to_ns(bh1721->light_poll_delay));
+
+	/*
+	 * Set far out of range ABS_MISC value, -1024, to enable real value to
+	 * go through next.
+	 */
+	input_abs_set_val(bh1721->light_input_dev,
+			  ABS_MISC, -bh1721->pdata->light_adc_max);
+
 	hrtimer_start(&bh1721->timer, ktime_set(0, LIGHT_SENSOR_START_TIME_DELAY), 
 		HRTIMER_MODE_REL);
 
@@ -481,7 +489,8 @@ static int bh1721_i2c_probe(struct i2c_client *client,
 	input_set_drvdata(input_dev, bh1721);
 	input_dev->name = "lightsensor-level";
 	input_set_capability(input_dev, EV_ABS, ABS_MISC);
-	input_set_abs_params(input_dev, ABS_MISC, 0, 1, 0, 0);
+	input_set_abs_params(input_dev, ABS_MISC, 0, pdata->light_adc_max,
+			     pdata->light_adc_fuzz, 0);
 
 	ret = input_register_device(input_dev);
 	if (ret < 0) {
