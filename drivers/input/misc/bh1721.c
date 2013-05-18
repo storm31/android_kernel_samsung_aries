@@ -31,6 +31,8 @@
 #define ON              1
 #define OFF				0
 
+#define DELAY_LOWBOUND	(5 * NSEC_PER_MSEC)
+
 /* start time delay for light sensor in nano seconds */
 #define LIGHT_SENSOR_START_TIME_DELAY 50000000
 
@@ -198,6 +200,12 @@ static ssize_t poll_delay_store(struct device *dev,
 	err = strict_strtoll(buf, 10, &new_delay);
 	if (err < 0)
 		return err;
+
+	if (new_delay < DELAY_LOWBOUND) {
+		printk("[Light Sensor] new delay less than low bound, so set delay "
+			"to %lld\n", (int64_t)DELAY_LOWBOUND);
+		new_delay = DELAY_LOWBOUND;
+	}
 
 	printk("[Light Sensor] new delay = %lldns, old delay = %lldns\n",
 		    new_delay, ktime_to_ns(bh1721->light_poll_delay));
