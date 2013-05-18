@@ -31,6 +31,9 @@
 #define ON              1
 #define OFF				0
 
+/* start time delay for light sensor in nano seconds */
+#define LIGHT_SENSOR_START_TIME_DELAY 50000000
+
 struct class *lightsensor_class;
 struct device *switch_cmd_dev;
 static bool light_enable = OFF;
@@ -159,10 +162,11 @@ static void bh1721_light_enable(struct bh1721_data *bh1721)
 {
 	printk("[Light Sensor] starting poll timer, delay %lldns\n",
 		    ktime_to_ns(bh1721->light_poll_delay));
-	hrtimer_start(&bh1721->timer, bh1721->light_poll_delay, HRTIMER_MODE_REL);
+	hrtimer_start(&bh1721->timer, ktime_set(0, LIGHT_SENSOR_START_TIME_DELAY), 
+		HRTIMER_MODE_REL);
 
 	if((bh1721_write_command(bh1721->i2c_client, &POWER_ON))>0)
-		printk("[Light Sensor] Power ON");
+		printk("[Light Sensor] Power ON\n");
 }
 
 static void bh1721_light_disable(struct bh1721_data *bh1721)
@@ -172,7 +176,7 @@ static void bh1721_light_disable(struct bh1721_data *bh1721)
 	cancel_work_sync(&bh1721->work_light);
 
 	if((bh1721_write_command(bh1721->i2c_client, &POWER_DOWN))>0)
-		printk("[Light Sensor] Power off");
+		printk("[Light Sensor] Power OFF\n");
 }
 
 static ssize_t poll_delay_show(struct device *dev,
