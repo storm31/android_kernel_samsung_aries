@@ -2904,12 +2904,12 @@ static struct platform_device sec_device_btsleep = {
 
 #ifdef CONFIG_SEC_HEADSET
 static struct sec_jack_port sec_jack_port_info[] = {
-		{
+	{
 		{ // HEADSET detect info
-			.eint		=IRQ_EINT8,
+			.eint		= IRQ_EINT8,
 			.gpio		= GPIO_DET_35,
 			.gpio_af	= GPIO_DET_35_AF ,
-			.low_active 	= 1
+			.low_active = 1
 		},
 		{ // SEND/END info
 			.eint		= IRQ_EINT12,
@@ -2917,7 +2917,7 @@ static struct sec_jack_port sec_jack_port_info[] = {
 			.gpio_af	= GPIO_EAR_SEND_END_AF,
 			.low_active = 1
 		}
-		}
+	}
 };
 
 static struct sec_jack_platform_data sec_jack_pdata = {
