@@ -99,12 +99,12 @@ static int ak_proc_read(char *page, char **start, off_t off, int count, int *eof
 	while(!gpio_get_value(GPIO_MSENSE_IRQ));
 	AKECS_GetData(mag_sensor);
 
-	p += sprintf(p,"[AK8973]\nX: %d, Y: %d, Z: %d\n", mag_sensor[1], mag_sensor[2], mag_sensor[3] );
+	p += sprintf(p,"[Compass]\nX: %d, Y: %d, Z: %d\n", mag_sensor[1], mag_sensor[2], mag_sensor[3] );
 	len = (p - page) - off;
 	if (len < 0) {
 		len = 0;
 	}
-	printk("ak_proc_read: success full\n");
+	printk("[Compass] ak_proc_read: success full\n");
 	*eof = (len <= count) ? 1 : 0;
 	*start = page + off;
 
@@ -130,7 +130,7 @@ static int AKI2C_RxData(char *rxData, int length)
 	};
 
 	if (i2c_transfer(this_client->adapter, msgs, 2) < 0) {
-		printk(KERN_ERR "AKI2C_RxData: transfer error \n");
+		printk(KERN_ERR "[Compass] AKI2C_RxData: transfer error \n");
 		return -EIO;
 	} else
 		return 0;
@@ -148,7 +148,7 @@ static int AKI2C_TxData(char *txData, int length)
 	};
 
 	if (i2c_transfer(this_client->adapter, msg, 1) < 0) {
-		printk(KERN_ERR "AKI2C_TxData: transfer error addr \n");
+		printk(KERN_ERR "[Compass] AKI2C_TxData: transfer error addr \n");
 		return -EIO;
 	} else
 		return 0;
@@ -165,7 +165,7 @@ static void AKECS_Reset (void)
 	gpio_set_value(GPIO_MSENSE_nRST, GPIO_LEVEL_LOW);
 	udelay(120);
 	gpio_set_value(GPIO_MSENSE_nRST, GPIO_LEVEL_HIGH);
-	gprintk("AKECS RESET COMPLETE\n");
+	gprintk("[Compass] AKECS RESET COMPLETE\n");
 }
 
 /*----------------------------------------------------------------------------*/
@@ -177,7 +177,7 @@ static int AKECS_SetMeasure (void)
 {
 	char buffer[2];
 
-	gprintk("MEASURE MODE\n");
+	gprintk("[Compass] MEASURE MODE\n");
 	/* Set measure mode */
 	buffer[0] = AKECS_REG_MS1;
 	buffer[1] = AKECS_MODE_MEASURE;
@@ -253,7 +253,7 @@ static int AKECS_GetEEPROMData (void)
 	ak_e2prom_data[0]= buffer[0];
 	ak_e2prom_data[1]= buffer[1];
 	ak_e2prom_data[2]= buffer[2];
-	gprintk("AKE2PROM_Data -->%d , %d, %d ----\n", ak_e2prom_data[0],ak_e2prom_data[1],ak_e2prom_data[2]);
+	gprintk("[Compass] AKE2PROM_Data -->%d , %d, %d ----\n", ak_e2prom_data[0],ak_e2prom_data[1],ak_e2prom_data[2]);
 
 	return ret;
 }
@@ -307,7 +307,7 @@ static int AKECS_GetData (short *rbuf)
 
 	ret =  AKI2C_RxData(buffer, 4);  //temp, x, y, z
 	if(ret<0) {
-		printk(KERN_ERR "AKECS_GetData  failed--------------\n");
+		printk(KERN_ERR "[Compass] AKECS_GetData  failed--------------\n");
 		return ret;
 		}
 	else	{
@@ -316,20 +316,20 @@ static int AKECS_GetData (short *rbuf)
 			rbuf[1] = buffer[1];
 			rbuf[2] = buffer[2];
 			rbuf[3] = buffer[3];
-			printk("AKECS_Get_MAG: temp = %d, x = %d, y = %d, z = %d\n", rbuf[0], rbuf[1], rbuf[2], rbuf[3]);
+			printk("[Compass] AKECS_Get_MAG: temp = %d, x = %d, y = %d, z = %d\n", rbuf[0], rbuf[1], rbuf[2], rbuf[3]);
 		}
   return ret;
 }
 
 static int akmd_open(struct inode *inode, struct file *file)
 {
-	gprintk(KERN_INFO "[AK8973B] %s\n", __FUNCTION__);
+	gprintk(KERN_INFO "[Compass] %s\n", __FUNCTION__);
 	return nonseekable_open(inode, file);
 }
 
 static int akmd_release(struct inode *inode, struct file *file)
 {
-	gprintk(KERN_INFO "[AK8973B] %s\n", __FUNCTION__);
+	gprintk(KERN_INFO "[Compass] %s\n", __FUNCTION__);
 	return 0;
 }
 
@@ -348,7 +348,7 @@ static long akmd_ioctl(struct file *file, unsigned int cmd,
 	if(_IOC_TYPE(cmd) != AKMIO)
 	{
 #if DEBUG
-		printk("[AK8973] cmd magic type error\n");
+		printk("[Compass] cmd magic type error\n");
 #endif
 		return -ENOTTY;
 	}
@@ -359,7 +359,7 @@ static long akmd_ioctl(struct file *file, unsigned int cmd,
 	if(err)
 	{
 #if DEBUG
-		printk("[AK8973] cmd access_ok error\n");
+		printk("[Compass] cmd access_ok error\n");
 #endif
 		return -EFAULT;
 	}
@@ -379,11 +379,11 @@ static long akmd_ioctl(struct file *file, unsigned int cmd,
 	}
 	switch (cmd) {
 		case ECS_IOCTL_RESET:
-			gprintk("[AK8973B] ECS_IOCTL_RESET %x\n", cmd);
+			gprintk("[Compass] ECS_IOCTL_RESET %x\n", cmd);
 			AKECS_Reset();
 			break;
 		case ECS_IOCTL_READ:
-			gprintk("[AK8973B] ECS_IOCTL_READ %x\n", cmd);
+			gprintk("[[Compass] ECS_IOCTL_READ %x\n", cmd);
 			gprintk(" len %02x:", rwbuf[0]);
 			gprintk(" addr %02x:", rwbuf[1]);
 			gprintk("\n");
@@ -398,7 +398,7 @@ static long akmd_ioctl(struct file *file, unsigned int cmd,
 				return ret;
 			break;
 		case ECS_IOCTL_WRITE:
-			gprintk("[AK8973B] ECS_IOCTL_WRITE %x\n", cmd);
+			gprintk("[Compass] ECS_IOCTL_WRITE %x\n", cmd);
 			gprintk(" len %02x:", rwbuf[0]);
 			for(i=0; i<rwbuf[0]; i++){
 				gprintk(" %02x", rwbuf[i+1]);
@@ -412,14 +412,14 @@ static long akmd_ioctl(struct file *file, unsigned int cmd,
 				return ret;
 			break;
 		case ECS_IOCTL_SET_MODE:
-			gprintk("[AK8973B] ECS_IOCTL_SET_MODE %x mode=%x\n", cmd, mode);
+			gprintk("[Compass] ECS_IOCTL_SET_MODE %x mode=%x\n", cmd, mode);
 			ret = AKECS_SetMode((char)mode);
 			gprintk(" ret = %d\n", ret);
 			if (ret < 0)
 				return ret;
 			break;
 		case ECS_IOCTL_GETDATA:
-			gprintk("[AK8973B] ECS_IOCTL_GETDATA %x\n", cmd);
+			gprintk("[Compass] ECS_IOCTL_GETDATA %x\n", cmd);
 			ret = AKECS_TransRBuff(msg, RBUFF_SIZE+1);
 			gprintk(" ret = %d\n", ret);
 			if (ret < 0)
@@ -430,7 +430,7 @@ static long akmd_ioctl(struct file *file, unsigned int cmd,
 			gprintk("\n");
 			break;
 		default:
-			gprintk("Unknown cmd %x\n", cmd);
+			gprintk("[Compass] Unknown cmd %x\n", cmd);
 			return -ENOTTY;
 	}
 
@@ -461,7 +461,7 @@ static void ak8973b_init_hw(void)
 	if(gpio_is_valid(GPIO_MSENSE_nRST)){
 		if(gpio_request(GPIO_MSENSE_nRST, "GPB"))
 		{
-			printk(KERN_ERR "Failed to request GPIO_MSENSE_nRST!\n");
+			printk(KERN_ERR "[Compass] Failed to request GPIO_MSENSE_nRST!\n");
 		}
 		gpio_direction_output(GPIO_MSENSE_nRST, GPIO_LEVEL_LOW);
 	}
@@ -470,7 +470,7 @@ static void ak8973b_init_hw(void)
 /*VNVS: 14-MAY'10 Pulling the RST Pin HIGH instead of keeping in floating state(Pulling NONE)*/
 	s3c_gpio_setpull(GPIO_MSENSE_nRST, S3C_GPIO_PULL_NONE);
 
-	gprintk("gpio setting complete!\n");
+	gprintk("[Compass] gpio setting complete!\n");
 }
 
 static struct file_operations akmd_fops = {
@@ -492,8 +492,8 @@ static int ak8973_probe(struct i2c_client *client,
 	int err = 0;
 	struct ak8973b_data *akm;
 
-	gprintk("start\n");
-	printk("[%s] ak8973 started...\n",__func__);
+	gprintk("[Compass] start\n");
+	printk("[Compass] %s \n",__func__);
 
 	akm = kzalloc(sizeof(struct ak8973b_data), GFP_KERNEL);
 	if (!akm) {
@@ -506,13 +506,13 @@ static int ak8973_probe(struct i2c_client *client,
 
 	if(this_client == NULL)
 	{
-		gprintk("i2c_client is NULL\n");
+		gprintk("[Compass] i2c_client is NULL\n");
 		return -ENODEV;
 	}
 
 	err = misc_register(&akmd_device);
 	if (err) {
-		printk(KERN_ERR "akm8973_probe: akmd_device register failed\n");
+		printk(KERN_ERR "[Compass] akm8973_probe: akmd_device register failed\n");
 		goto exit_misc_device_register_failed;
 	}
 
@@ -536,7 +536,7 @@ static int __exit ak8973_remove(struct i2c_client *client)
 	// int err;
 	struct ak8973b_data *akm = i2c_get_clientdata(client);
 
-	printk("[%s] ak8973 removed...\n",__func__);
+	printk("[Compass] %s\n",__func__);
 
 	misc_deregister(&akmd_device);
 
@@ -551,9 +551,30 @@ static int __exit ak8973_remove(struct i2c_client *client)
 	return 0;
 }
 
+static int ak8973_suspend( struct device* dev )
+{
+	printk("[Compass] %s \n",__func__);	
+	AKECS_SetMode(AKECS_MODE_POWERDOWN);			
+	return 0;
+}
+
+
+static int ak8973_resume( struct device* dev )
+{
+	printk("[Compass] %s \n",__func__); 
+	AKECS_SetMode(AKECS_MODE_MEASURE);	
+	wake_up(&open_wq);
+	return 0;
+}
+
 static const struct i2c_device_id ak8973_id[] = {
 	{"ak8973", 0},
 	{}
+};
+
+static const struct dev_pm_ops ak8973b_pm_ops = {
+	.suspend = ak8973_suspend,
+	.resume = ak8973_resume,
 };
 
 MODULE_DEVICE_TABLE(i2c, ak8973_id);
@@ -561,6 +582,7 @@ MODULE_DEVICE_TABLE(i2c, ak8973_id);
 static struct i2c_driver ak8973b_i2c_driver = {
 	.driver = {
 		.name = "ak8973",
+		.pm = &ak8973b_pm_ops,
 	},
 	.probe = ak8973_probe,
 	.remove = __exit_p(ak8973_remove),
@@ -569,7 +591,7 @@ static struct i2c_driver ak8973b_i2c_driver = {
 
 static int __init ak8973b_init(void)
 {
-	gprintk("__start\n");
+	gprintk("[Compass] start\n");
 	ak8973b_init_hw();
 	AKECS_Reset(); /*module reset */
 	udelay(200);
