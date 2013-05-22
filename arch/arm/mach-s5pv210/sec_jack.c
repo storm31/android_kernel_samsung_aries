@@ -41,11 +41,11 @@
 #include <mach/sec_jack.h>
 
 #define CONFIG_DEBUG_SEC_JACK
-#define SUBJECT "JACK_DRIVER"
+#define SUBJECT "[SEC JACK]"
 
 #ifdef CONFIG_DEBUG_SEC_JACK
 #define SEC_JACKDEV_DBG(format,...)\
-	printk ("[ "SUBJECT " (%s,%d) ] " format "\n", __func__, __LINE__, ## __VA_ARGS__);
+	printk (SUBJECT " (%s,%d) " format "\n", __func__, __LINE__, ## __VA_ARGS__);
 
 #else
 #define DEBUG_LOG(format,...)
@@ -63,11 +63,6 @@
 #define WAKE_LOCK_TIME		(HZ * 5)	/* 5 sec */
 
 static struct platform_driver sec_jack_driver;
-
-struct class *jack_class;
-EXPORT_SYMBOL(jack_class);
-static struct device *jack_selector_fs; // Sysfs device, this is used for communication with Cal App.
-EXPORT_SYMBOL(jack_selector_fs);
 extern int s3c_adc_get_adc_data(int channel);
 
 struct sec_jack_info {
@@ -80,10 +75,6 @@ static struct sec_jack_info *hi;
 
 struct switch_dev switch_jack_detection = {
 		.name = "h2w",
-};
-
-struct switch_dev switch_sendend = {
-		.name = "send_end",
 };
 
 static struct timer_list jack_detect_timer;
@@ -203,7 +194,6 @@ static void jack_detect_change(struct work_struct *ignored)
 
 			if(hi->send_end_key_pressed)
 			{
-				switch_set_state(&switch_sendend, 0);
 				input_report_key(hi->input, KEYCODE_SENDEND, 0);
 				input_sync(hi->input);
 				hi->send_end_key_pressed = 0;
@@ -241,7 +231,6 @@ static void sendend_switch_change(struct work_struct *ignored)
 		if(!state)
 		{
 			printk("SEND/END key is released\n");
-			switch_set_state(&switch_sendend, 0);
 			input_report_key(hi->input, KEYCODE_SENDEND, 0);
 			input_sync(hi->input);
 			hi->send_end_key_pressed = 0;
@@ -252,7 +241,6 @@ static void sendend_switch_change(struct work_struct *ignored)
 			wake_lock_timeout(&jack_sendend_wake_lock, WAKE_LOCK_TIME);
 			send_end_key_event_timer.expires = SEND_END_CHECK_TIME;
 			add_timer(&send_end_key_event_timer);
-			switch_set_state(&switch_sendend, 1);
 			SEC_JACKDEV_DBG("SEND/END key is pressed : timer start\n");
 		}
 
@@ -372,96 +360,6 @@ static irqreturn_t send_end_irq_handler(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-//USER can select jack type if driver can't check the jack type
-static int strtoi(const char *buf)
-{
-	int ret;
-	ret = buf[0]-48;
-	return ret;
-}
-
-static ssize_t select_jack_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	printk(KERN_INFO "[JACK] %s : operate nothing\n", __FUNCTION__);
-
-	return 0;
-}
-
-static ssize_t select_jack_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
-{
-	int value = 0;
-	struct sec_gpio_info   *det_jack = &hi->port.det_jack;
-	struct sec_gpio_info   *send_end = &hi->port.send_end;
-	int state = gpio_get_value(det_jack->gpio) ^ det_jack->low_active;
-
-	SEC_JACKDEV_DBG("buf = %s", buf);
-	SEC_JACKDEV_DBG("buf size = %d", sizeof(buf));
-	SEC_JACKDEV_DBG("buf size = %d", strlen(buf));
-
-	if(state)
-	{
-		if(current_jack_type_status != SEC_UNKNOWN_DEVICE)
-		{
-			printk(KERN_ERR "user can't select jack device if current_jack_status isn't unknown status");
-			return -1;
-		}
-
-		if(sizeof(buf)!=1)
-		{
-			printk("input error\n");
-			printk("Must be stored ( 1,2,4)\n");
-			return -1;
-		}
-
-		value = strtoi(buf);
-		SEC_JACKDEV_DBG("User  selection : 0X%x", value);
-
-		switch(value)
-		{
-			case SEC_HEADSET_3_POLE_DEVICE:
-			{
-				current_jack_type_status = SEC_HEADSET_3_POLE_DEVICE;
-				switch_set_state(&switch_jack_detection, current_jack_type_status);
-				break;
-			}
-			case SEC_HEADSET_4_POLE_DEVICE:
-			{
-				enable_irq (send_end->eint);
-				enable_irq_wake (send_end->eint);
-
-				send_end_irq_token++;
-				current_jack_type_status = SEC_HEADSET_4_POLE_DEVICE;
-				switch_set_state(&switch_jack_detection, current_jack_type_status);
-				break;
-			}
-			case SEC_TVOUT_DEVICE:
-			{
-				current_jack_type_status = SEC_TVOUT_DEVICE;
-
-				printk("EAR_MICBIAS Off\n");
-				gpio_set_value(GPIO_EAR_MICBIAS0_EN, 0);
-				gpio_set_value(GPIO_EAR_MICBIAS_EN, 0);
-
-				switch_set_state(&switch_jack_detection, current_jack_type_status);
-				break;
-			}
-		}
-	}
-	else
-	{
-		printk(KERN_ALERT "Error : mic bias enable complete but headset detached!!\n");
-		current_jack_type_status = SEC_JACK_NO_DEVICE;
-
-		printk("EAR_MICBIAS Off\n");
-		gpio_set_value(GPIO_EAR_MICBIAS0_EN, 0);
-		gpio_set_value(GPIO_EAR_MICBIAS_EN, 0);
-	}
-
-	return size;
-}
-
-static DEVICE_ATTR(select_jack, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH, select_jack_show, select_jack_store);
-
 static int sec_jack_probe(struct platform_device *pdev)
 {
 	int ret;
@@ -505,35 +403,12 @@ static int sec_jack_probe(struct platform_device *pdev)
 	init_timer(&send_end_key_event_timer);
 	send_end_key_event_timer.function = send_end_key_event_timer_handler;
 
-	SEC_JACKDEV_DBG("registering switch_sendend switch_dev sysfs sec_jack");
-
 	ret = switch_dev_register(&switch_jack_detection);
 	if (ret < 0)
 	{
 		printk(KERN_ERR "SEC JACK: Failed to register switch device\n");
 		goto err_switch_dev_register;
 	}
-
-	ret = switch_dev_register(&switch_sendend);
-	if (ret < 0)
-	{
-		printk(KERN_ERR "SEC JACK: Failed to register switch sendend device\n");
-		goto err_switch_dev_register;
-	}
-
-	//Create JACK Device file in Sysfs
-	jack_class = class_create(THIS_MODULE, "jack");
-	if(IS_ERR(jack_class))
-	{
-		printk(KERN_ERR "Failed to create class(sec_jack)\n");
-	}
-
-	jack_selector_fs = device_create(jack_class, NULL, 0, NULL, "jack_selector");
-	if (IS_ERR(jack_selector_fs))
-		printk(KERN_ERR "Failed to create device(sec_jack)!= %ld\n", IS_ERR(jack_selector_fs));
-
-	if (device_create_file(jack_selector_fs, &dev_attr_select_jack) < 0)
-		printk(KERN_ERR "Failed to create device file(%s)!\n", dev_attr_select_jack.attr.name);
 
 	//GPIO configuration
 	send_end = &hi->port.send_end;
