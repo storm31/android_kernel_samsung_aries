@@ -1090,70 +1090,10 @@ static int l3g4200d_remove(struct i2c_client *client)
 	gyro->client = NULL;
 	return 0;
 }
-#ifdef CONFIG_PM
-static int l3g4200d_suspend(struct device* dev)
-{
-	#if DEBUG
-	printk(KERN_INFO "l3g4200d_suspend\n");
-	#endif
-
-	/* TO DO */
-	// before starting self-test, backup register
-	l3g4200d_i2c_read(CTRL_REG1, &reg_backup[0], 5);
-
-#if DEBUG
-	for(i = 0; i < 5; i++)
-		printk("[l3g4200d_suspend] backup reg[%d] = %2x\n", i, reg_backup[i]);
-#endif
-
-	if (gyro->enable) {
-		mutex_lock(&gyro->lock);
-
-		hrtimer_cancel(&gyro->timer);
-		cancel_work_sync(&gyro->work);
-
-		mutex_unlock(&gyro->lock);
-	}
-
-	l3g4200d_set_mode(PM_OFF);
-	return 0;
-}
-
-static int l3g4200d_resume(struct device* dev)
-{
-	#if DEBUG
-	printk(KERN_INFO "l3g4200d_resume\n");
-	#endif
-
-	/* TO DO */
-	// restore backup register
-	l3g4200d_i2c_write(CTRL_REG1, &reg_backup[0], 5);
-
-#if DEBUG
-	for(i = 0; i < 5; i++)
-		printk("[l3g4200d_resume] backup reg[%d] = %2x\n", i, reg_backup[i]);
-#endif
-
-	if (gyro->enable) {
-		mutex_lock(&gyro->lock);
-
-		hrtimer_start(&gyro->timer,gyro->polling_delay, HRTIMER_MODE_REL);
-
-		mutex_unlock(&gyro->lock);
-	}
-
-	return 0;
-}
-#endif
 
 static const struct i2c_device_id l3g4200d_id[] = {
 	{ "l3g4200d", 0 },
 	{},
-};
-
-static const struct dev_pm_ops l3g4200d_pm_ops = {
-	.suspend = l3g4200d_suspend,
-	.resume = l3g4200d_resume,
 };
 
 MODULE_DEVICE_TABLE(i2c, l3g4200d_id);
@@ -1162,7 +1102,6 @@ static struct i2c_driver l3g4200d_driver = {
 	.driver = {
 		.owner = THIS_MODULE,
 		.name = "l3g4200d",
-		.pm = &l3g4200d_pm_ops,
 	},
 	.class = I2C_CLASS_HWMON,
 	.probe = l3g4200d_probe,
@@ -1172,13 +1111,6 @@ static struct i2c_driver l3g4200d_driver = {
 
 static int __init l3g4200d_init(void)
 {
-#if defined(CONFIG_SAMSUNG_P1LN)
-	if ( HWREV <= 13) {
-		printk( "%s : gyro sensor only work on rev0.7 and above\n", __func__ );
-		return 0;
-	}	
-#endif
-
 	printk("%s \n",__func__);
 
 	printk(KERN_INFO "L3G4200D init driver\n");
