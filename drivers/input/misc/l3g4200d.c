@@ -78,7 +78,9 @@
 #define MAX_ENTRY	1
 #define MAX_DELAY	(MAX_ENTRY * 9523809LL)
 
-
+#define REL_STATUS                      (REL_RX)
+#define REL_WAKE                        (REL_RY)
+#define REL_CONTROL_REPORT              (REL_RZ)
 
 /*#define SHIFT_ADJ_2G		4
 #define SHIFT_ADJ_4G		3
