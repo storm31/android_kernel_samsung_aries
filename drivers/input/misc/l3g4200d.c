@@ -984,6 +984,15 @@ static int l3g4200d_probe(struct i2c_client *client,
 	/* Z */
 	input_set_capability(input_dev, EV_REL, REL_RZ);
 	input_set_abs_params(input_dev, REL_RZ, -32768, 32768, 0, 0);
+	/* status */
+	input_set_capability(input_dev, EV_REL, REL_STATUS);
+	input_set_abs_params(input_dev, REL_STATUS, -32768, 32768, 0, 0);
+	/* wake */
+	input_set_capability(input_dev, EV_REL, REL_WAKE);
+	input_set_abs_params(input_dev, REL_WAKE, -32768, 32768, 0, 0);
+	/* enabled/delay */
+	input_set_capability(input_dev, EV_REL, REL_CONTROL_REPORT);
+	input_set_abs_params(input_dev, REL_CONTROL_REPORT, -32768, 32768, 0, 0);
 
 	err = input_register_device(input_dev);
 	if (err < 0) {
