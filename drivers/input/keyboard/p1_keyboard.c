@@ -575,33 +575,13 @@ static void keyboard_late_resume(struct early_suspend *early_sus)
 }
 #endif	// End of CONFIG_HAS_EARLYSUSPEND
 
-
-#if defined(CONFIG_PM)
-static int dock_keyboard_suspend(struct platform_device *pdev, pm_message_t state)
-{
-//    struct dock_keyboard_data *data = pdev->dev.platform_data;
-    return 0;
-}
-
-static int dock_keyboard_resume(struct platform_device *pdev)
-{
-//    struct dock_keyboard_data *data = pdev->dev.platform_data;
-    return 0;
-}
-#endif
-
 static struct platform_driver dock_keyboard_device_driver =
 {
     .probe		= dock_keyboard_probe,
     .remove	= __devexit_p(dock_keyboard_remove),
-#if defined(CONFIG_PM)
-    .suspend	= dock_keyboard_suspend,
-    .resume	= dock_keyboard_resume,
-#endif
-    .driver		=
-    {
-	.name	= "p1_keyboard",
-	.owner	= THIS_MODULE,
+    .driver	= {
+		.name	= "p1_keyboard",
+		.owner	= THIS_MODULE,
     }
 };
 
