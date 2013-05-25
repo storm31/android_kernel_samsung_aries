@@ -13,8 +13,8 @@
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
 #include <linux/delay.h>
-#include <asm/io.h>
-#include <asm/gpio.h>
+#include <linux/io.h>
+#include <linux/gpio.h>
 #include <plat/gpio-cfg.h>
 #include <plat/map-base.h>
 #include <mach/regs-clock.h>
