@@ -499,33 +499,9 @@ static int acc_con_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static int acc_con_suspend(struct platform_device *pdev, pm_message_t state)
-{
-	pr_info("[30pin] %s\n", __func__);
-	MHD_HW_Off();
-
-	return 0;
-}
-
-static int acc_con_resume(struct platform_device *pdev)
-{
-	struct acc_con_info *acc = platform_get_drvdata(pdev);
-	int dock_state;
-	pr_info("[30pin] %s\n", __func__);
-
-	dock_state = gpio_get_value(GPIO_ACCESSORY_INT);
-
-	if (!dock_state)
-		if (acc->current_dock == DOCK_DESK)
-			sii9234_tpi_init();
-	return 0;
-}
-
 static struct platform_driver acc_con_driver = {
 	.probe		= acc_con_probe,
 	.remove		= acc_con_remove,
-	.suspend	= acc_con_suspend,
-	.resume		= acc_con_resume,
 	.driver		= {
 		.name		= "acc_con",
 		.owner		= THIS_MODULE,
