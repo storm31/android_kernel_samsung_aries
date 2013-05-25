@@ -353,6 +353,10 @@ static int wm8994_set_path(struct snd_kcontrol *kcontrol,
 		path_num -= 4;
 		break;
 	case EXTRA_DOCK_SPEAKER:
+		DEBUG_LOG("routing to %s\n", mc->texts[path_num]);
+		wm8994->ringtone_active = OFF;
+		path_num -= 4;
+		break;
 	case TV_OUT:
 		DEBUG_LOG("routing to %s\n", mc->texts[path_num]);
 		wm8994->ringtone_active = OFF;
