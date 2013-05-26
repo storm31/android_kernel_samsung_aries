@@ -26,6 +26,7 @@
 #include <linux/slab.h>
 #include <linux/platform_device.h>
 #include <linux/clk.h>
+#include <linux/30pin_con.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -325,6 +326,9 @@ static int wm8994_set_path(struct snd_kcontrol *kcontrol,
 	struct wm8994_priv *wm8994 = snd_soc_codec_get_drvdata(codec);
 	int val;
 	int path_num = ucontrol->value.integer.value[0];
+
+	if (enable_audio_usb)
+		path_num = 11;
 
 	switch (path_num) {
 	case PLAYBACK_OFF:

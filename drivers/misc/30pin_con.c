@@ -24,6 +24,7 @@
 #include <linux/slab.h>
 #include <linux/wakelock.h>
 #include <linux/earlysuspend.h>
+#include <linux/30pin_con.h>
 #include <asm/irq.h>
 #include <mach/regs-gpio.h>
 #include <mach/regs-clock.h>
@@ -32,32 +33,6 @@
 #define IRQ_ACCESSORY_INT    IRQ_EINT5
 #define IRQ_DOCK_INT         IRQ_EINT(29)
 #define ACCESSORY_ID         4
-
-enum accessory_type {
-	ACCESSORY_NONE = 0,
-	ACCESSORY_TVOUT,
-	ACCESSORY_LINEOUT,
-	ACCESSORY_CARMOUNT,
-	ACCESSORY_OTG,
-	ACCESSORY_UNKNOWN,
-};
-
-enum dock_type {
-	DOCK_NONE = 0,
-	DOCK_DESK,
-	DOCK_KEYBOARD,
-};
-
-enum acc_type {
-	P30_OTG = 0,
-	P30_EARJACK_WITH_DOCK,
-	P30_CARDOCK,
-	P30_ANAL_TV_OUT,
-	P30_KEYBOARDDOCK,
-	P30_DESKDOCK,
-	P30_USB,
-	P30_TA,
-};
 
 extern struct i2c_driver SII9234_i2c_driver;
 extern struct i2c_driver SII9234A_i2c_driver;
@@ -70,6 +45,8 @@ extern void sii9234_tpi_init(void);
 extern void MHD_HW_Off(void);
 extern void MHD_GPIO_INIT(void);
 extern int s3c_adc_get_adc_data(int channel);
+
+bool enable_audio_usb = false;
 
 struct acc_con_info {
 	struct device *acc_dev;
@@ -116,6 +93,9 @@ static int connector_detect_change(void)
 
 static void _detected(struct acc_con_info *acc, int device, bool connected)
 {
+
+	enable_audio_usb = false;
+
 	if (connected) {
 		switch(device) {
 		case P30_OTG:
@@ -125,20 +105,26 @@ static void _detected(struct acc_con_info *acc, int device, bool connected)
 			break;
 		case P30_EARJACK_WITH_DOCK:
 			pr_info("[30pin] Earjack with Dock detected: id=%d\n", device);
-			//to do
+			enable_audio_usb = true;
 			break;
 		case P30_ANAL_TV_OUT:
 			pr_info("[30pin] TVOut cable detected: id=%d\n", device);
 			TVout_LDO_ctrl(true);
+			enable_audio_usb = true;
 			break;
 		case P30_KEYBOARDDOCK:
 			pr_info("[30pin] Keyboard dock detected: id=%d\n", device);
 			check_keyboard_dock(1);
 			break;
+		case P30_CARDOCK:
+			pr_info("[30pin] Car dock detected: id=%d\n", device);
+			//to do
+			break;
 		case P30_DESKDOCK:
 			pr_info("[30pin] Deskdock cable detected: id=%d\n", device);
 			TVout_LDO_ctrl(true);
 			sii9234_tpi_init();
+			enable_audio_usb = true;
 			break;
 		}
 	} else {
