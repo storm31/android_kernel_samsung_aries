@@ -125,6 +125,7 @@ enum {
 #ifdef BATTERY_CURRENT
 	BATT_CURRENT,
 #endif
+	DISABLE_CHARGER,
 };
 
 

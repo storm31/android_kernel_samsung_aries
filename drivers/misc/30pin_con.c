@@ -46,6 +46,10 @@ extern void MHD_HW_Off(void);
 extern void MHD_GPIO_INIT(void);
 extern int s3c_adc_get_adc_data(int channel);
 
+#if defined CONFIG_USB_S3C_OTG_HOST || defined CONFIG_USB_DWC_OTG
+extern void set_otghost_mode(int mode);
+#endif
+
 bool enable_audio_usb = false;
 
 struct acc_con_info {
@@ -98,11 +102,12 @@ static void _detected(struct acc_con_info *acc, int device, bool connected)
 
 	if (connected) {
 		switch(device) {
+#if defined(CONFIG_USB_S3C_OTG_HOST) || defined(CONFIG_USB_DWC_OTG)
 		case P30_OTG:
-			pr_info("[30pin] OTG detected: id=%d\n", device);
-			//to do
-			//s3c_usb_cable(USB_OTGHOST_ATTACHED);
+			pr_info("[30pin] OTG cable detected: id=%d\n", device);
+			set_otghost_mode(2);
 			break;
+#endif
 		case P30_EARJACK_WITH_DOCK:
 			pr_info("[30pin] Earjack with Dock detected: id=%d\n", device);
 			enable_audio_usb = true;
@@ -129,10 +134,11 @@ static void _detected(struct acc_con_info *acc, int device, bool connected)
 		}
 	} else {
 		switch(device) {
+#if defined(CONFIG_USB_S3C_OTG_HOST) || defined(CONFIG_USB_DWC_OTG)
 		case P30_OTG:
-			//to do
-			//s3c_usb_cable(USB_OTGHOST_DETACHED);
+			set_otghost_mode(0);
 			break;
+#endif
 		case P30_EARJACK_WITH_DOCK:
 			//to do
 			break;
