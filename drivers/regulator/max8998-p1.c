@@ -169,10 +169,6 @@ static int max8998_get_enable_register(struct regulator_dev *rdev,
 		*reg = MAX8998_REG_ONOFF4;
 		*shift = 7 - (ldo - MAX8998_EN32KHZ_AP);
 		break;
-	case MAX8998_ESAFEOUT1 ... MAX8998_ESAFEOUT2:
-		*reg = MAX8998_REG_CHGR2;
-		*shift = 7 - (ldo - MAX8998_ESAFEOUT1);
-		break;
 	default:
 		return -EINVAL;
 	}
