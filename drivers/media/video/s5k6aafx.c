@@ -775,13 +775,13 @@ static int s5k6aafx_s_mbus_fmt(struct v4l2_subdev *sd, struct v4l2_mbus_framefmt
 	 * We need to check here what are the formats the camera support, and
 	 * set the most appropriate one according to the request from FIMC
 	 */
-	state->req_fmt.width = fmt->width;
-	state->req_fmt.height = fmt->height;
-	state->set_fmt.width = fmt->width;
-	state->set_fmt.height = fmt->height;
+	state->req_fmt.width       = fmt->width;
+	state->req_fmt.height      = fmt->height;
+	state->req_fmt.colorspace  = fmt->colorspace;
+	state->req_fmt.pixelformat = fmt->code;
 
-	state->req_fmt.pixelformat = V4L2_PIX_FMT_JPEG;
-	state->req_fmt.colorspace = V4L2_COLORSPACE_JPEG;
+	state->set_fmt.width       = fmt->width;
+	state->set_fmt.height      = fmt->height;
 
 	printk("%s : width - %d , height - %d\n", __func__, state->req_fmt.width, state->req_fmt.height);
 
@@ -810,29 +810,27 @@ static int s5k6aafx_s_parm(struct v4l2_subdev *sd, struct v4l2_streamparm *parms
 //latin_cam VT CAM Antibanding
 static int s5k6aafx_set_60hz_antibanding(struct v4l2_subdev *sd)
 {
-	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	struct s5k6aafx_state *state = to_state(sd);
 	int err = -EINVAL;
+	unsigned long s5k6aafx_antibanding60hz[] = {
+		0xFCFCD000,
+		0x00287000,
+		// Anti-Flicker //
+		// End user init script
+		0x002A0400,
+		0x0F12005F,  //REG_TC_DBG_AutoAlgEnBits //Auto Anti-Flicker is enabled bit[5] = 1.
+		0x002A03DC,
+		0x0F120002,  //02 REG_SF_USER_FlickerQuant //Set flicker quantization(0: no AFC, 1: 50Hz, 2: 60 Hz)
+		0x0F120001,
+	};
 
 	FUNC_ENTR();
 
-	unsigned long s5k6aafx_antibanding60hz[] = {
-	0xFCFCD000,
-	0x00287000,
-	// Anti-Flicker //
-	// End user init script
-	0x002A0400,
-	0x0F12005F,  //REG_TC_DBG_AutoAlgEnBits //Auto Anti-Flicker is enabled bit[5] = 1.
-	0x002A03DC,
-	0x0F120002,  //02 REG_SF_USER_FlickerQuant //Set flicker quantization(0: no AFC, 1: 50Hz, 2: 60 Hz)
-	0x0F120001,
-	};
-
 	err = s5k6aafx_write_regs(sd, s5k6aafx_antibanding60hz,
-					sizeof(s5k6aafx_antibanding60hz) / sizeof(s5k6aafx_antibanding60hz[0]));
+		sizeof(s5k6aafx_antibanding60hz) / sizeof(s5k6aafx_antibanding60hz[0]));
+
 	printk("%s:  setting 60hz antibanding \n", __func__);
-	if (unlikely(err))
-	{
+
+	if (unlikely(err)) {
 		printk("%s: failed to set 60hz antibanding \n", __func__);
 		return err;
 	}
@@ -1646,27 +1644,17 @@ static int s5k6aafx_probe(struct i2c_client *client,
 	 * or without them, use default information in driver
 	 */
 	if (!(pdata->default_width && pdata->default_height)) {
-	  /* TODO: assign driver default resolution */
+		state->req_fmt.width = DEFAULT_WIDTH;
+		state->req_fmt.height = DEFAULT_HEIGHT;
 	} else {
-	  state->pix.width = pdata->default_width;
-	  state->pix.height = pdata->default_height;
+		state->req_fmt.width = pdata->default_width;
+		state->req_fmt.height = pdata->default_height;
 	}
 
 	if (!pdata->pixelformat)
-	  state->pix.pixelformat = DEFAULT_FMT;
+		state->req_fmt.pixelformat = DEFAULT_FMT;
 	else
-	  state->pix.pixelformat = pdata->pixelformat;
-
-	if (pdata->freq == 0)
-	  state->freq = DEFUALT_MCLK;
-	else
-	  state->freq = pdata->freq;
-
-	if (!pdata->is_mipi) {
-	  state->is_mipi = 0;
-	  dev_dbg(&client->dev, "parallel mode\n");
-	} else
-	  state->is_mipi = pdata->is_mipi;
+		state->req_fmt.pixelformat = pdata->pixelformat;
 
 	/* Registering subdev */
 	v4l2_i2c_subdev_init(sd, client, &s5k6aafx_ops);
