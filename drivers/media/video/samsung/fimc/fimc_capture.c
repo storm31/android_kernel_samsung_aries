@@ -754,7 +754,6 @@ int fimc_s_input(struct file *file, void *fh, unsigned int i)
 	fimc_dbg("%s: index %d\n", __func__, i);
 
 #ifdef CONFIG_MACH_P1
-	int err = 0;
 #if defined(CONFIG_VIDEO_NM6XX)
 	if( i == 0 && camera_back_check && camera_active_type == 4 )
 #else
@@ -769,7 +768,7 @@ int fimc_s_input(struct file *file, void *fh, unsigned int i)
 	 * Then here we release the camera and reconfigure it.
 	 */
 	if (i == 1000) {
-		dev_err(ctrl->dev, "ESD code is running\n");
+		//dev_err(ctrl->dev, "ESD code is running\n");
 		fimc_release_subdev(ctrl);
 		if (camera_back_check)
 			i = camera_active_type;
@@ -825,16 +824,16 @@ int fimc_s_input(struct file *file, void *fh, unsigned int i)
 	if ((!camera_back_check) && (fimc->active_camera != 1)) {
 		do {
 			struct v4l2_control v_ctrl;
-			err = 0;
+			ret = 0;
 
 			if (ctrl->cam->cam_power) {
 				ctrl->cam->cam_power(1);
 			}
 
 			v_ctrl.id = V4L2_CID_CAM_SENSOR_TYPE;
-			err = ctrl->cam->sd->ops->core->g_ctrl(ctrl->cam->sd,&v_ctrl);
+			ret = ctrl->cam->sd->ops->core->g_ctrl(ctrl->cam->sd,&v_ctrl);
 
-			if (err >= 0) {
+			if (ret >= 0) {
 				camera_back_check = 1;
 				camera_active_type = i;
 				fimc->active_camera = i;
@@ -1750,12 +1749,6 @@ static void fimc_reset_capture(struct fimc_control *ctrl)
 int fimc_streamon_capture(void *fh)
 {
 	struct fimc_control *ctrl = ((struct fimc_prv_data *)fh)->ctrl;
-#ifdef CONFIG_MACH_P1
-	if (!ctrl->cap || !ctrl->cap->nr_bufs) {
-		fimc_err("%s: Invalid capture setting.\n", __func__);
-		return -EINVAL;
-	}
-#endif
 	struct fimc_capinfo *cap = ctrl->cap;
 	struct v4l2_frmsizeenum cam_frmsize;
 #ifdef CONFIG_MACH_P1
@@ -1764,12 +1757,14 @@ int fimc_streamon_capture(void *fh)
 	int rot;
 	int ret;
 
-	fimc_dbg("%s\n", __func__);
 #ifdef CONFIG_MACH_ARIES
 	char *ce147 = "CE147 0-003c";
 	device_id = strcmp(ctrl->cam->sd->name, ce147);
 	fimc_dbg("%s, name(%s), device_id(%d), vtmode(%d)\n", __func__, ctrl->cam->sd->name , device_id, vtmode);
 #endif
+
+	fimc_dbg("%s\n", __func__);
+
 	if (!ctrl->cam || !ctrl->cam->sd) {
 		fimc_err("%s: No capture device.\n", __func__);
 		return -ENODEV;
@@ -2015,12 +2010,12 @@ int fimc_streamoff_capture(void *fh)
 int fimc_qbuf_capture(void *fh, struct v4l2_buffer *b)
 {
 	struct fimc_control *ctrl = ((struct fimc_prv_data *)fh)->ctrl;
-#ifdef CONFIG_MACH_ARIES
+
 	if (!ctrl->cap || !ctrl->cap->nr_bufs) {
 		fimc_err("%s: Invalid capture setting.\n", __func__);
 		return -EINVAL;
 	}
-#endif
+
 	if (b->memory != V4L2_MEMORY_MMAP) {
 		fimc_err("%s: invalid memory type\n", __func__);
 		return -EINVAL;
