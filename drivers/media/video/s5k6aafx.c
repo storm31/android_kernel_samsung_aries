@@ -718,24 +718,23 @@ static int s5k6aafx_enum_framesizes(struct v4l2_subdev *sd, \
 	/*
 	 * Return the actual output settings programmed to the camera
 	 */
-	if((state->set_fmt.width == 480) && (state->set_fmt.height == 640)) {
+	if((state->pix.width == 480) && (state->pix.height == 640)) {
 		fsize->discrete.width = 640;
 		fsize->discrete.height = 480;
 	}
-	else if ((state->set_fmt.width == 960) && (state->set_fmt.height == 1280)) {
+	else if ((state->pix.width == 960) && (state->pix.height == 1280)) {
 		fsize->discrete.width = 1280;
 		fsize->discrete.height = 960;
 	}
 	else {
-		fsize->discrete.width = state->set_fmt.width;
-		fsize->discrete.height = state->set_fmt.height;
+		fsize->discrete.width = state->pix.width;
+		fsize->discrete.height = state->pix.height;
 	}
 	printk("%s : width - %d , height - %d\n", __func__, fsize->discrete.width, fsize->discrete.height);
 
 	return 0;
 }
 
-#if 0
 static int s5k6aafx_enum_mbus_fmt(struct v4l2_subdev *sd, unsigned int index,
 				  enum v4l2_mbus_pixelcode *code)
 {
@@ -753,7 +752,6 @@ static int s5k6aafx_enum_frameintervals(struct v4l2_subdev *sd,
 	FUNC_ENTR();
 	return err;
 }
-#endif
 
 static int s5k6aafx_try_mbus_fmt(struct v4l2_subdev *sd, struct v4l2_mbus_framefmt *fmt)
 {
@@ -775,15 +773,12 @@ static int s5k6aafx_s_mbus_fmt(struct v4l2_subdev *sd, struct v4l2_mbus_framefmt
 	 * We need to check here what are the formats the camera support, and
 	 * set the most appropriate one according to the request from FIMC
 	 */
-	state->req_fmt.width       = fmt->width;
-	state->req_fmt.height      = fmt->height;
-	state->req_fmt.colorspace  = fmt->colorspace;
-	state->req_fmt.pixelformat = fmt->code;
+	state->pix.width       = fmt->width;
+	state->pix.height      = fmt->height;
+	state->pix.colorspace  = fmt->colorspace;
+	state->pix.pixelformat = fmt->code;
 
-	state->set_fmt.width       = fmt->width;
-	state->set_fmt.height      = fmt->height;
-
-	printk("%s : width - %d , height - %d\n", __func__, state->req_fmt.width, state->req_fmt.height);
+	printk("%s : width - %d , height - %d\n", __func__, state->pix.width, state->pix.height);
 
 	return 0;
 }
@@ -898,13 +893,12 @@ static int s5k6aafx_init(struct v4l2_subdev *sd, u32 val)
 	//hmin84.park -10.07.06
 #endif
 
-	state->set_fmt.width = DEFAULT_WIDTH;
-	state->set_fmt.height = DEFAULT_HEIGHT;
+	state->pix.width = DEFAULT_WIDTH;
+	state->pix.height = DEFAULT_HEIGHT;
 
 	return 0;
 }
 
-#if 0
 static int s5k6aafx_queryctrl(struct v4l2_subdev *sd, struct v4l2_queryctrl *qc)
 {
 	FUNC_ENTR();
@@ -916,7 +910,6 @@ static int s5k6aafx_querymenu(struct v4l2_subdev *sd, struct v4l2_querymenu *qm)
 	FUNC_ENTR();
 	return 0;
 }
-#endif
 
 static int s5k6aafx_s_stream(struct v4l2_subdev *sd, int enable)
 {
@@ -928,7 +921,7 @@ static int s5k6aafx_s_stream(struct v4l2_subdev *sd, int enable)
 	if (!enable)
 		return 0;
 
-	if (state->req_fmt.colorspace != V4L2_COLORSPACE_JPEG) {
+	if (state->pix.colorspace != V4L2_COLORSPACE_JPEG) {
 		err = s5k6aafx_set_preview_start(sd);
 		printk("s5k6aafx_set_preview_start~~~~~ \n");
 		if (err < 0) {
@@ -1588,22 +1581,20 @@ static int s5k6aafx_s_ctrl(struct v4l2_subdev *sd, struct v4l2_control *ctrl)
 
 static const struct v4l2_subdev_core_ops s5k6aafx_core_ops = {
 	.init = s5k6aafx_init,		/* initializing API */
-#if 0
 	.queryctrl = s5k6aafx_queryctrl,
 	.querymenu = s5k6aafx_querymenu,
-#endif
 	.g_ctrl = s5k6aafx_g_ctrl,
 	.s_ctrl = s5k6aafx_s_ctrl,
 };
 
 static const struct v4l2_subdev_video_ops s5k6aafx_video_ops = {
 	/*.s_crystal_freq = s5k6aafx_s_crystal_freq,*/
-	.g_mbus_fmt  = s5k6aafx_g_mbus_fmt,
-	.s_mbus_fmt  = s5k6aafx_s_mbus_fmt,
+	.g_mbus_fmt = s5k6aafx_g_mbus_fmt,
+	.s_mbus_fmt = s5k6aafx_s_mbus_fmt,
 	.s_stream = s5k6aafx_s_stream,
 	.enum_framesizes = s5k6aafx_enum_framesizes,
-	/*.enum_frameintervals = s5k6aafx_enum_frameintervals,*/
-	/*.enum_mbus_fmt = s5k6aafx_enum_mbus_fmt,*/
+	.enum_frameintervals = s5k6aafx_enum_frameintervals,
+	.enum_mbus_fmt = s5k6aafx_enum_mbus_fmt,
 	.try_mbus_fmt = s5k6aafx_try_mbus_fmt,
 	.g_parm	= s5k6aafx_g_parm,
 	.s_parm	= s5k6aafx_s_parm,
@@ -1644,17 +1635,17 @@ static int s5k6aafx_probe(struct i2c_client *client,
 	 * or without them, use default information in driver
 	 */
 	if (!(pdata->default_width && pdata->default_height)) {
-		state->req_fmt.width = DEFAULT_WIDTH;
-		state->req_fmt.height = DEFAULT_HEIGHT;
+		state->pix.width = DEFAULT_WIDTH;
+		state->pix.height = DEFAULT_HEIGHT;
 	} else {
-		state->req_fmt.width = pdata->default_width;
-		state->req_fmt.height = pdata->default_height;
+		state->pix.width = pdata->default_width;
+		state->pix.height = pdata->default_height;
 	}
 
 	if (!pdata->pixelformat)
-		state->req_fmt.pixelformat = DEFAULT_FMT;
+		state->pix.pixelformat = DEFAULT_FMT;
 	else
-		state->req_fmt.pixelformat = pdata->pixelformat;
+		state->pix.pixelformat = pdata->pixelformat;
 
 	/* Registering subdev */
 	v4l2_i2c_subdev_init(sd, client, &s5k6aafx_ops);

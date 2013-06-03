@@ -27,12 +27,9 @@ enum s5k6aafx_runmode {
 struct s5k6aafx_state {
 	struct v4l2_subdev sd;
 	/*
-	 * req_fmt is the requested format from the application.
-	 * set_fmt is the output format of the camera. Finally FIMC
-	 * converts the camera output(set_fmt) to the requested format
-	 * with hardware scaler.
+	 * pix is the requested format from the application.
 	 */
-	struct v4l2_pix_format req_fmt;
+	struct v4l2_pix_format pix;
 	struct v4l2_pix_format set_fmt;
 	enum s5k6aafx_runmode runmode;
 	int vt_mode;
