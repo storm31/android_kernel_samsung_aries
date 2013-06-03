@@ -3504,7 +3504,7 @@ static int isx005_s_crystal_freq(struct v4l2_subdev *sd, u32 freq, u32 flags)
 	return err;
 }
 
-static int isx005_g_fmt(struct v4l2_subdev *sd, struct v4l2_format *fmt)
+static int isx005_g_mbus_fmt(struct v4l2_subdev *sd, struct v4l2_mbus_framefmt *fmt)
 {
 	int err = 0;
 
@@ -3732,7 +3732,7 @@ static int isx005_enum_mbus_fmt(struct v4l2_subdev *sd, unsigned int index,
 {
 	int num_entries;
 
-        num_entries = sizeof(capture_fmts)/sizeof(struct v4l2_mbus_framefmt);
+	num_entries = sizeof(capture_fmts)/sizeof(struct v4l2_mbus_framefmt);
 
 	if(index >= num_entries)
 	{
@@ -3749,7 +3749,7 @@ static int isx005_try_mbus_fmt(struct v4l2_subdev *sd, struct v4l2_mbus_framefmt
 	int num_entries = 0;
 	int i = 0;
 
-	num_entries = ARRAY_SIZE(capture_fmts);
+	num_entries = sizeof(capture_fmts) / sizeof(struct v4l2_mbus_framefmt);
 
 	for(i = 0; i < num_entries; i++)
 	{
@@ -4520,7 +4520,7 @@ static const struct v4l2_subdev_core_ops isx005_core_ops = {
 
 static const struct v4l2_subdev_video_ops isx005_video_ops = {
 	.s_crystal_freq = isx005_s_crystal_freq,
-	.g_fmt = isx005_g_fmt,
+	.g_mbus_fmt = isx005_g_mbus_fmt,
 	.s_mbus_fmt = isx005_s_mbus_fmt,
 	.enum_framesizes = isx005_enum_framesizes,
 	.enum_frameintervals = isx005_enum_frameintervals,
@@ -4581,14 +4581,14 @@ static int isx005_probe(struct i2c_client *client,
 	state->pix.height = pdata->default_height;
 
 	if (!pdata->pixelformat)
-	  state->pix.pixelformat = DEFAULT_PIX_FMT;
+		state->pix.pixelformat = DEFAULT_PIX_FMT;
 	else
-	  state->pix.pixelformat = pdata->pixelformat;
+		state->pix.pixelformat = pdata->pixelformat;
 
 	if (!pdata->freq)
-	  state->freq = DEFAULT_MCLK;/* 24MHz default */
+		state->freq = DEFAULT_MCLK;/* 24MHz default */
 	else
-	  state->freq = pdata->freq;
+		state->freq = pdata->freq;
 
 	/* Registering subdev */
 	v4l2_i2c_subdev_init(sd, client, &isx005_ops);
