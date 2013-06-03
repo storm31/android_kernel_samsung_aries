@@ -129,7 +129,6 @@ static void _detected(struct acc_con_info *acc, int device, bool connected)
 			pr_info("[30pin] Deskdock cable detected: id=%d\n", device);
 			TVout_LDO_ctrl(true);
 			sii9234_tpi_init();
-			enable_audio_usb = true;
 			break;
 		}
 	} else {
