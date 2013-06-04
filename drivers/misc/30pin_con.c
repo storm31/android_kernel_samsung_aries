@@ -119,7 +119,7 @@ static void _detected(struct acc_con_info *acc, int device, bool connected)
 			break;
 		case P30_KEYBOARDDOCK:
 			pr_info("[30pin] Keyboard dock detected: id=%d\n", device);
-			check_keyboard_dock(1);
+			check_keyboard_dock(0);
 			break;
 		case P30_CARDOCK:
 			pr_info("[30pin] Car dock detected: id=%d\n", device);
@@ -145,7 +145,7 @@ static void _detected(struct acc_con_info *acc, int device, bool connected)
 			TVout_LDO_ctrl(false);
 			break;
 		case P30_KEYBOARDDOCK:
-			check_keyboard_dock(0);
+			check_keyboard_dock(1);
 			break;
 		case P30_DESKDOCK:
 			MHD_HW_Off();
@@ -160,15 +160,12 @@ static void acc_dock_check(struct acc_con_info *acc, bool connected)
 	char *env_ptr = "DOCK=none";
 	char *stat_ptr;
 	char *envp[3];
-	int dock_state;
 
 	pr_info("[30pin] %s\n", __func__);
 
-	dock_state = check_keyboard_dock(connected);
-
 	if (connected) {
 		stat_ptr = "STATE=online";
-		if (dock_state) {
+		if (check_keyboard_dock(0)) {
 			env_ptr = "DOCK=keyboard";
 			acc->current_dock = DOCK_KEYBOARD;
 			_detected(acc, P30_KEYBOARDDOCK, 1);
@@ -179,9 +176,6 @@ static void acc_dock_check(struct acc_con_info *acc, bool connected)
 		}
 	} else {
 		stat_ptr = "STATE=offline";
-		if (dock_state)
-			check_keyboard_dock(connected);
-
 		if (acc->current_dock == DOCK_KEYBOARD)
 			_detected(acc, P30_KEYBOARDDOCK, 0);
 		else
