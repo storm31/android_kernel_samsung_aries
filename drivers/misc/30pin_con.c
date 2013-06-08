@@ -43,6 +43,8 @@ extern int check_keyboard_dock(int val);
 extern void TVout_LDO_ctrl(int enable);
 extern void sii9234_tpi_init(void);
 extern void MHD_HW_Off(void);
+extern int MHD_HW_IsOn(void);
+extern int MHD_Read_deviceID(void);
 extern void MHD_GPIO_INIT(void);
 extern int s3c_adc_get_adc_data(int channel);
 
@@ -64,6 +66,74 @@ struct acc_con_info {
 	int dock_state;
 	int acc_state;
 };
+
+static ssize_t MHD_check_read(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	int count;
+	int res;
+	TVout_LDO_ctrl(true);
+	if (!MHD_HW_IsOn()) {
+		sii9234_tpi_init();
+		res = MHD_Read_deviceID();
+		MHD_HW_Off();		
+	} else {
+		sii9234_tpi_init();
+		res = MHD_Read_deviceID();
+	}
+	count = sprintf(buf,"%d\n", res);
+	TVout_LDO_ctrl(false);
+	return count;
+}
+
+static ssize_t MHD_check_write(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t size)
+{
+	pr_info("[30pin] input data: %s\n", buf);
+	return size;
+}
+
+static DEVICE_ATTR(MHD_file, S_IRUGO , MHD_check_read, MHD_check_write);
+
+static ssize_t acc_check_read(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	int count;
+	int connected = 0;
+	struct acc_con_info *acc = dev_get_drvdata(dev);
+
+	if (0 == acc->dock_state) {
+		if(acc->current_dock == DOCK_DESK)
+			connected |= (0x1 << 0);
+		else if (acc->current_dock == DOCK_KEYBOARD)
+			connected |= (0x1 << 1);
+	}
+
+	if (0 == acc->acc_state) {
+		if (acc->current_accessory == ACCESSORY_CARMOUNT)
+			connected |= (0x1 << 2);
+		else if (acc->current_accessory == ACCESSORY_TVOUT)
+			connected |= (0x1 << 3);
+		else if (acc->current_accessory == ACCESSORY_LINEOUT)
+			connected |= (0x1 << 4);
+	}
+
+	if (gpio_get_value(GPIO_HDMI_HPD) && MHD_HW_IsOn())
+		connected |= (0x1 << 5);
+
+	count = sprintf(buf,"%d\n", connected);
+	pr_info("[30pin] connected: %x\n", connected);
+	return count;
+}
+
+static ssize_t acc_check_write(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t size)
+{
+	pr_info("[30pin] input data: %s\n", buf);
+	return size;
+}
+
+static DEVICE_ATTR(acc_file, S_IRUGO , acc_check_read, acc_check_write);
 
 static int connector_detect_change(void)
 {
@@ -127,7 +197,7 @@ static void _detected(struct acc_con_info *acc, int device, bool connected)
 			break;
 		case P30_DESKDOCK:
 			pr_info("[30pin] Deskdock cable detected: id=%d\n", device);
-			acc->current_dock == DOCK_DESK;
+			acc->current_dock = DOCK_DESK;
 			TVout_LDO_ctrl(true);
 			sii9234_tpi_init();
 			break;
@@ -166,9 +236,9 @@ static void acc_dock_check(struct acc_con_info *acc, bool connected)
 		stat_ptr = "STATE=online";
 
 	if (acc->current_dock == DOCK_KEYBOARD)
-		sprintf(env_ptr, "DOCK=keyboard");
+		env_ptr = "DOCK=keyboard";
 	else if (acc->current_dock == DOCK_DESK)
-		sprintf(env_ptr, "DOCK=desk");
+		env_ptr = "DOCK=desk";
 
 	pr_info("[30pin] %s: %s - %s\n", __func__, env_ptr, stat_ptr);
 
@@ -275,6 +345,8 @@ static void acc_notified(struct acc_con_info *acc, s16 acc_adc)
 		}
 	}
 
+	pr_info("[30pin] %s: %s - %s\n", __func__, env_ptr, stat_ptr);
+
 	envp[0] = env_ptr;
 	envp[1] = stat_ptr;
 	envp[2] = NULL;
@@ -308,7 +380,7 @@ static void acc_con_worker(struct work_struct *work)
 			if (acc->current_dock == DOCK_DESK)
 				_detected(acc, P30_DESKDOCK, false);
 
-			acc->current_dock == DOCK_NONE;
+			acc->current_dock = DOCK_NONE;
 			acc_dock_check(acc, false);
 		} else if (0 == cur_state) {
 			pr_info("[30pin] Docking station attatched\n");
@@ -458,6 +530,14 @@ static int acc_con_probe(struct platform_device *pdev)
 		pr_err("[30pin] acc_id_interrupt_init failed.\n");
 		return retval;
 	}
+
+	if (device_create_file(acc->acc_dev, &dev_attr_MHD_file) < 0)
+		pr_err("[30pin] Failed to create device file(%s)!\n",
+			dev_attr_MHD_file.attr.name);
+
+	if (device_create_file(acc->acc_dev, &dev_attr_acc_file) < 0)
+		pr_err("[30pin] Failed to create device file(%s)!\n",
+			dev_attr_acc_file.attr.name);
 
 	retval = enable_irq_wake(IRQ_ACCESSORY_INT);
 	if (unlikely(retval < 0)) {
