@@ -570,6 +570,14 @@ static struct regulator_consumer_supply buck3_consumer[] = {
 	{	.supply	= "vcc_ram", },
 };
 
+static struct regulator_consumer_supply safeout1_consumer[] = {
+	{	.supply	= "vbus_ap", },
+};
+
+static struct regulator_consumer_supply safeout2_consumer[] = {
+	{	.supply	= "vbus_cp", },
+};
+
 static struct regulator_init_data p1_ldo2_data = {
 	.constraints	= {
 		.name		= "VALIVE_1.2V",
@@ -827,6 +835,36 @@ static struct regulator_init_data p1_buck3_data = {
     .consumer_supplies      = buck3_consumer,
 };
 
+static struct regulator_init_data p1_safeout1_data = {
+	.constraints	= {
+		.name		= "USB_VBUS_AP",
+		.min_uV		= 5000000,
+		.max_uV		= 5000000,
+		.apply_uV	= 1,
+		.valid_ops_mask	=  REGULATOR_CHANGE_STATUS,
+		.state_mem	= {
+			.enabled = 1,
+		},
+	},
+	.num_consumer_supplies	= ARRAY_SIZE(safeout1_consumer),
+	.consumer_supplies	= safeout1_consumer,
+};
+
+static struct regulator_init_data p1_safeout2_data = {
+	.constraints	= {
+		.name		= "USB_VBUS_CP",
+		.min_uV		= 5000000,
+		.max_uV		= 5000000,
+		.apply_uV	= 1,
+		.valid_ops_mask	=  REGULATOR_CHANGE_STATUS,
+		.state_mem	= {
+			.disabled = 1,
+		},
+	},
+	.num_consumer_supplies	= ARRAY_SIZE(safeout2_consumer),
+	.consumer_supplies	= safeout2_consumer,
+};
+
 static struct max8998_regulator_data p1_regulators[] = {
 	{ MAX8998_LDO2,  &p1_ldo2_data },
 	{ MAX8998_LDO3,  &p1_ldo3_data },
@@ -844,6 +882,8 @@ static struct max8998_regulator_data p1_regulators[] = {
 	{ MAX8998_BUCK1, &p1_buck1_data },
 	{ MAX8998_BUCK2, &p1_buck2_data },
 	{ MAX8998_BUCK3, &p1_buck3_data },
+	{ MAX8998_ESAFEOUT1, &p1_safeout1_data },
+	{ MAX8998_ESAFEOUT2, &p1_safeout2_data },
 };
 
 static struct sec_battery_adc_table_data temper_table[] =  {

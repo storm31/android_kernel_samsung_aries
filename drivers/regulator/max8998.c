@@ -105,6 +105,8 @@ static const struct voltage_map_desc *ldo_voltage_map[] = {
 	&buck12_voltage_map_desc,	/* BUCK2 */
 	&buck3_voltage_map_desc,	/* BUCK3 */
 	&buck4_voltage_map_desc,	/* BUCK4 */
+	NULL,
+	NULL,
 };
 
 static inline int max8998_get_ldo(struct regulator_dev *rdev)
@@ -168,6 +170,10 @@ static int max8998_get_enable_register(struct regulator_dev *rdev,
 	case MAX8998_EN32KHZ_AP ... MAX8998_ENVICHG:
 		*reg = MAX8998_REG_ONOFF4;
 		*shift = 7 - (ldo - MAX8998_EN32KHZ_AP);
+		break;
+	case MAX8998_ESAFEOUT1 ... MAX8998_ESAFEOUT2:
+		*reg = MAX8998_REG_CHGR2;
+		*shift = 7 - (ldo - MAX8998_ESAFEOUT1);
 		break;
 	default:
 		return -EINVAL;
@@ -325,7 +331,6 @@ static int max8998_set_voltage(struct regulator_dev *rdev,
 
 	desc = ldo_voltage_map[ldo];
 	if (desc == NULL)
-
 		return -EINVAL;
 
 	if (max_vol < desc->min || min_vol > desc->max)
