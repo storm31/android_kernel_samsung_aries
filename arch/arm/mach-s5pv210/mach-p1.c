@@ -43,6 +43,7 @@
 #include <mach/gpio.h>
 #include <mach/gpio-p1.h>
 #include <mach/mach-p1.h>
+#include <mach/sec_switch.h>
 #include <mach/adc.h>
 #include <mach/param.h>
 #include <mach/system.h>
@@ -163,7 +164,15 @@ struct sec_battery_callbacks *callbacks;
 struct max17042_callbacks *max17042_cb;
 static enum cable_type_t set_cable_status;
 static enum charging_status_type_t charging_status;
+static int fsa9480_init_flag = 0;
+static int sec_switch_status = 0;
+static int sec_switch_inited = 0;
+static bool fsa9480_jig_status = 0;
+static bool ap_vbus_disabled = 0;
+
+void sec_switch_set_regulator(int mode);
 void otg_phy_init(void);
+
 extern bool keyboard_enable;
 
 static int p1_notifier_call(struct notifier_block *this,
@@ -997,11 +1006,17 @@ static int max17042_callbacks(int request_mode, int arg1, int arg2)
 
 }
 
+static bool sec_battery_get_jig_status(void)
+{
+	return fsa9480_jig_status;
+}
+
 static struct sec_battery_platform_data sec_battery_pdata = {
 	.register_callbacks = &sec_battery_register_callbacks,
 	.adc_table		= temper_table,
 	.adc_array_size	= ARRAY_SIZE(temper_table),
 	.fuelgauge_cb		= &max17042_callbacks,
+	.get_jig_status		= &sec_battery_get_jig_status,
 };
 
 struct platform_device sec_device_battery = {
@@ -2618,6 +2633,8 @@ static void fsa9480_usb_cb(bool attached)
 
 	if (callbacks && callbacks->set_cable)
 		callbacks->set_cable(callbacks, set_cable_status);
+
+	if(!attached)	ap_vbus_disabled = 0;  // reset flag
 }
 
 static void fsa9480_charger_cb(bool attached)
@@ -2625,6 +2642,14 @@ static void fsa9480_charger_cb(bool attached)
 	set_cable_status = attached ? CABLE_TYPE_AC : CABLE_TYPE_NONE;
 	if (callbacks && callbacks->set_cable)
 		callbacks->set_cable(callbacks, set_cable_status);
+
+	if(!attached)	ap_vbus_disabled = 0;  // reset flag
+}
+
+static void fsa9480_jig_cb(bool attached)
+{
+	printk("%s : attached (%d)\n", __func__, (int)attached);
+	fsa9480_jig_status = attached;
 }
 
 static struct switch_dev switch_dock = {
@@ -2657,12 +2682,34 @@ static void fsa9480_reset_cb(void)
 		pr_err("Failed to register dock switch. %d\n", ret);
 }
 
+static void fsa9480_set_init_flag(void)
+{
+	fsa9480_init_flag = 1;
+}
+
+static void fsa9480_usb_switch(void)
+{
+	// check if sec_switch init finished.
+	if(!sec_switch_inited)
+		return;
+
+	if(sec_switch_status & (int)(USB_SEL_MASK)) {
+		sec_switch_set_regulator(AP_VBUS_ON);
+	}
+	else {
+		sec_switch_set_regulator(CP_VBUS_ON);
+	}
+}
+
 static struct fsa9480_platform_data fsa9480_pdata = {
 	.usb_cb = fsa9480_usb_cb,
 	.charger_cb = fsa9480_charger_cb,
+	.jig_cb = fsa9480_jig_cb,
 	.deskdock_cb = fsa9480_deskdock_cb,
 	.cardock_cb = fsa9480_cardock_cb,
 	.reset_cb = fsa9480_reset_cb,
+	.set_init_flag = fsa9480_set_init_flag,
+	.set_usb_switch = fsa9480_usb_switch,
 };
 
 static struct i2c_board_info i2c_devs7[] __initdata = {
@@ -2884,6 +2931,117 @@ static void __init android_pmem_set_platdata(void)
 		(u32)s5p_get_media_memsize_bank(S5P_MDEV_PMEM_ADSP, 0);
 }
 #endif
+
+
+static struct regulator *reg_safeout1;
+static struct regulator *reg_safeout2;
+
+int sec_switch_get_regulator(void)
+{
+	printk("%s\n", __func__);
+
+	// get regulators.
+	if (IS_ERR_OR_NULL(reg_safeout1)) {
+		reg_safeout1 = regulator_get(NULL, "vbus_ap");
+		if (IS_ERR_OR_NULL(reg_safeout1)) {
+			   pr_err("failed to get safeout1 regulator");
+			   return -1;
+		}
+	}
+
+	if (IS_ERR_OR_NULL(reg_safeout2)) {
+		reg_safeout2 = regulator_get(NULL, "vbus_cp");
+		if (IS_ERR_OR_NULL(reg_safeout2)) {
+			   pr_err("failed to get safeout2 regulator");
+			   return -1;
+		}
+	}
+
+//	printk("reg_safeout1 = %p\n", reg_safeout1);
+//	printk("reg_safeout2 = %p\n", reg_safeout2);
+
+	return 0;
+}
+
+void sec_switch_set_regulator(int mode)
+{
+	struct usb_gadget *gadget = platform_get_drvdata(&s3c_device_usbgadget);
+
+	printk("%s (mode : %d)\n", __func__, mode);
+
+	if (IS_ERR_OR_NULL(reg_safeout1) ||
+		IS_ERR_OR_NULL(reg_safeout2)) {
+		pr_err("safeout regulators not initialized yet!!\n");
+		return;
+	}
+
+	// note : safeout1/safeout2 register setting is not matched regulator's use_count.
+	//            so, set/reset use_count is needed to control safeout regulator correctly...
+	if(mode == CP_VBUS_ON) {
+		if(!regulator_is_enabled(reg_safeout2)) {
+			regulator_set_use_count(reg_safeout2, 0);
+			regulator_enable(reg_safeout2);
+		}
+
+		if(regulator_is_enabled(reg_safeout1)) {
+			regulator_set_use_count(reg_safeout1, 1);
+			regulator_disable(reg_safeout1);
+		}
+	}
+	else if(mode == AP_VBUS_ON) {
+		/* if(!regulator_is_enabled(reg_safeout1)) */ {
+			regulator_set_use_count(reg_safeout1, 0);
+			regulator_enable(reg_safeout1);
+		}
+
+		if(regulator_is_enabled(reg_safeout2)) {
+			regulator_set_use_count(reg_safeout2, 1);
+			regulator_disable(reg_safeout2);
+		}
+	}
+	else {  // AP_VBUS_OFF
+		printk("%s : AP VBUS OFF\n", __func__);
+
+		gadget->speed = USB_SPEED_UNKNOWN;
+		usb_gadget_vbus_disconnect(gadget);
+		ap_vbus_disabled = 1;  // set flag
+	}
+}
+
+int sec_switch_get_cable_status(void)
+{
+	return (ap_vbus_disabled ? CABLE_TYPE_NONE : set_cable_status);
+}
+
+int sec_switch_get_phy_init_status(void)
+{
+	return fsa9480_init_flag;
+}
+
+void sec_switch_set_switch_status(int val)
+{
+	printk("%s (switch_status : %d)\n", __func__, val);
+	if(!sec_switch_inited)
+		sec_switch_inited = 1;
+
+	sec_switch_status = val;
+}
+
+static struct sec_switch_platform_data sec_switch_pdata = {
+	.get_regulator = sec_switch_get_regulator,
+	.set_regulator = sec_switch_set_regulator,
+	.get_cable_status = sec_switch_get_cable_status,
+	.get_phy_init_status = sec_switch_get_phy_init_status,
+	.set_switch_status = sec_switch_set_switch_status,
+};
+
+struct platform_device sec_device_switch = {
+	.name	= "sec_switch",
+	.id	= 1,
+	.dev	= {
+		.platform_data	= &sec_switch_pdata,
+	}
+};
 
 static struct platform_device sec_device_rfkill = {
 	.name	= "bt_rfkill",
@@ -7005,6 +7163,8 @@ static struct platform_device *p1_devices[] __initdata = {
 #if defined CONFIG_USB_DWC_OTG
 	&s3c_device_usb_dwcotg,
 #endif
+	&sec_device_switch,  // samsung switch driver
+
 #ifdef CONFIG_USB_GADGET
 	&s3c_device_usbgadget,
 #endif
