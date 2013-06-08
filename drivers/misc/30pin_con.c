@@ -119,7 +119,7 @@ static void _detected(struct acc_con_info *acc, int device, bool connected)
 			break;
 		case P30_KEYBOARDDOCK:
 			pr_info("[30pin] Keyboard dock detected: id=%d\n", device);
-			check_keyboard_dock(0);
+			acc->current_dock = DOCK_KEYBOARD;
 			break;
 		case P30_CARDOCK:
 			pr_info("[30pin] Car dock detected: id=%d\n", device);
@@ -127,6 +127,7 @@ static void _detected(struct acc_con_info *acc, int device, bool connected)
 			break;
 		case P30_DESKDOCK:
 			pr_info("[30pin] Deskdock cable detected: id=%d\n", device);
+			acc->current_dock == DOCK_DESK;
 			TVout_LDO_ctrl(true);
 			sii9234_tpi_init();
 			break;
@@ -157,30 +158,19 @@ static void _detected(struct acc_con_info *acc, int device, bool connected)
 
 static void acc_dock_check(struct acc_con_info *acc, bool connected)
 {
-	char *env_ptr = "DOCK=none";
-	char *stat_ptr;
 	char *envp[3];
+	char *env_ptr  = "DOCK=none";
+	char *stat_ptr = "STATE=offline";
 
-	pr_info("[30pin] %s\n", __func__);
-
-	if (connected) {
+	if (connected)
 		stat_ptr = "STATE=online";
-		if (check_keyboard_dock(0)) {
-			env_ptr = "DOCK=keyboard";
-			acc->current_dock = DOCK_KEYBOARD;
-			_detected(acc, P30_KEYBOARDDOCK, 1);
-		} else {
-			env_ptr = "DOCK=deskdock";
-			acc->current_dock = DOCK_DESK;
-			_detected(acc, P30_DESKDOCK, 1);
-		}
-	} else {
-		stat_ptr = "STATE=offline";
-		if (acc->current_dock == DOCK_KEYBOARD)
-			_detected(acc, P30_KEYBOARDDOCK, 0);
-		else
-			_detected(acc, P30_DESKDOCK, 0);
-	}
+
+	if (acc->current_dock == DOCK_KEYBOARD)
+		sprintf(env_ptr, "DOCK=keyboard");
+	else if (acc->current_dock == DOCK_DESK)
+		sprintf(env_ptr, "DOCK=desk");
+
+	pr_info("[30pin] %s: %s - %s\n", __func__, env_ptr, stat_ptr);
 
 	envp[0] = env_ptr;
 	envp[1] = stat_ptr;
@@ -197,7 +187,7 @@ static irqreturn_t acc_con_interrupt(int irq, void *ptr)
 	return IRQ_HANDLED;
 }
 
-static void acc_con_interrupt_init(struct acc_con_info *acc)
+static int acc_con_interrupt_init(struct acc_con_info *acc)
 {
 	int ret;
 	pr_info("[30pin] %s\n", __func__);
@@ -207,18 +197,22 @@ static void acc_con_interrupt_init(struct acc_con_info *acc)
 	irq_set_irq_type(IRQ_ACCESSORY_INT, IRQ_TYPE_EDGE_BOTH);
 
 	ret = request_threaded_irq(IRQ_ACCESSORY_INT, NULL, acc_con_interrupt,
-				   IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING |
-				   IRQF_NO_SUSPEND, "accessory_detect", acc);
+		IRQF_DISABLED, "Docking Detected", acc);
 
-	if (unlikely(ret < 0))
-		pr_err("[30pin] request accessory_irq failed.\n");
+	if (unlikely(ret < 0)) {
+		pr_err("[30pin] fail to register irq : GPIO_ACCESSORY_INT\n");
+		return ret;
+	}
+
+	return 0;
 }
 
 static void acc_notified(struct acc_con_info *acc, s16 acc_adc)
 {
-	char *env_ptr;
-	char *stat_ptr;
 	char *envp[3];
+	char *env_ptr  = "ACCESSORY=unknown";
+	char *stat_ptr = "STATE=offline";
+	acc->current_accessory = ACCESSORY_NONE;
 
 	pr_info("[30pin] adc change notified: acc_adc = %d\n", acc_adc);
 
@@ -239,59 +233,52 @@ static void acc_notified(struct acc_con_info *acc, s16 acc_adc)
 			/* Camera Connection Kit */
 			env_ptr = "ACCESSORY=OTG";
 			acc->current_accessory = ACCESSORY_OTG;
-			_detected(acc, P30_OTG, 1);
+			_detected(acc, P30_OTG, true);
 		} else if ((2100 < acc_adc) && (acc_adc < 2360)) {
 			/* Analog TV Out Cable */
 			env_ptr = "ACCESSORY=TV";
 			acc->current_accessory = ACCESSORY_TVOUT;
-			_detected(acc, P30_ANAL_TV_OUT, 1);
+			_detected(acc, P30_ANAL_TV_OUT, true);
 		} else if ((1590 < acc_adc) && (acc_adc < 1840)) {
 			/* Car Mount (charge 5V/2A) */
 			env_ptr = "ACCESSORY=carmount";
 			acc->current_accessory = ACCESSORY_CARMOUNT;
-			_detected(acc, P30_CARDOCK, 1);
+			_detected(acc, P30_CARDOCK, true);
 		} else if ((1100 < acc_adc) && (acc_adc < 1360)) {
 			/* 3-Pole Ear-Jack with Deskdock*/
 			env_ptr = "ACCESSORY=lineout";
 			acc->current_accessory = ACCESSORY_LINEOUT;
-			_detected(acc, P30_EARJACK_WITH_DOCK, 1);
+			_detected(acc, P30_EARJACK_WITH_DOCK, true);
 		} else {
 			pr_warning("[30pin] adc range filter not found.\n");
 			return;
 		}
 
 		stat_ptr = "STATE=online";
-		envp[0] = env_ptr;
-		envp[1] = stat_ptr;
-		envp[2] = NULL;
 
 		if (acc->current_accessory == ACCESSORY_OTG)
-			msleep(50);
+			msleep(100);
 
-		kobject_uevent_env(&acc->acc_dev->kobj, KOBJ_CHANGE, envp);
 	} else {
 		if (acc->current_accessory == ACCESSORY_OTG) {
 			env_ptr = "ACCESSORY=OTG";
-			_detected(acc, P30_OTG, 0);
+			_detected(acc, P30_OTG, false);
 		} else if (acc->current_accessory == ACCESSORY_TVOUT) {
 			env_ptr = "ACCESSORY=TV";
-			_detected(acc, P30_ANAL_TV_OUT, 0);
+			_detected(acc, P30_ANAL_TV_OUT, false);
 		} else if (acc->current_accessory == ACCESSORY_LINEOUT) {
 			env_ptr = "ACCESSORY=lineout";
-			_detected(acc, P30_EARJACK_WITH_DOCK, 0);
+			_detected(acc, P30_EARJACK_WITH_DOCK, false);
 		} else if (acc->current_accessory == ACCESSORY_CARMOUNT) {
 			env_ptr = "ACCESSORY=carmount";
-			_detected(acc, P30_CARDOCK, 0);
-		} else
-			env_ptr = "ACCESSORY=unknown";
-
-		acc->current_accessory = ACCESSORY_NONE;
-		stat_ptr = "STATE=offline";
-		envp[0] = env_ptr;
-		envp[1] = stat_ptr;
-		envp[2] = NULL;
-		kobject_uevent_env(&acc->acc_dev->kobj, KOBJ_CHANGE, envp);
+			_detected(acc, P30_CARDOCK, false);
+		}
 	}
+
+	envp[0] = env_ptr;
+	envp[1] = stat_ptr;
+	envp[2] = NULL;
+	kobject_uevent_env(&acc->acc_dev->kobj, KOBJ_CHANGE, envp);
 }
 
 static void acc_con_worker(struct work_struct *work)
@@ -314,13 +301,25 @@ static void acc_con_worker(struct work_struct *work)
 		if (1 == cur_state) {
 			pr_info("[30pin] Docking station detatched");
 			acc->dock_state = cur_state;
+
+			if (acc->current_dock == DOCK_KEYBOARD)
+				_detected(acc, P30_KEYBOARDDOCK, false);
+
+			if (acc->current_dock == DOCK_DESK)
+				_detected(acc, P30_DESKDOCK, false);
+
+			acc->current_dock == DOCK_NONE;
 			acc_dock_check(acc, false);
 		} else if (0 == cur_state) {
-			wake_lock(&acc->wake_lock);
-			pr_info("[30pin] Docking station attatched, adc=%d\n", cur_state);
+			pr_info("[30pin] Docking station attatched\n");
 			acc->dock_state = cur_state;
+
+			if (check_keyboard_dock(cur_state))
+				_detected(acc, P30_KEYBOARDDOCK, true);
+			else
+				_detected(acc, P30_DESKDOCK, true);
+
 			acc_dock_check(acc, true);
-			wake_unlock(&acc->wake_lock);
 		}
 	}
 	enable_irq(IRQ_ACCESSORY_INT);
@@ -342,15 +341,15 @@ static void acc_id_worker(struct work_struct *work)
 			acc_notified(acc, false);
 			irq_set_irq_type(IRQ_DOCK_INT, IRQ_TYPE_EDGE_FALLING);
 		} else if (0 == acc_id_val) {
-			wake_lock(&acc->wake_lock);
+			acc->acc_state = acc_id_val;
 			msleep(420); /* workaround for jack */
-
+			wake_lock(&acc->wake_lock);
 			adc_val = connector_detect_change();
 			pr_info("[30pin] Accessory attached, adc=%d\n", adc_val);
 
 			acc_notified(acc, adc_val);
-			wake_unlock(&acc->wake_lock);
 			irq_set_irq_type(IRQ_DOCK_INT, IRQ_TYPE_EDGE_RISING);
+			wake_unlock(&acc->wake_lock);
 		}
 	}
 	enable_irq(IRQ_DOCK_INT);
@@ -375,8 +374,8 @@ static int acc_id_interrupt_init(struct acc_con_info *acc)
 	irq_set_irq_type(IRQ_DOCK_INT, IRQ_TYPE_EDGE_BOTH);
 
 	ret = request_threaded_irq(IRQ_DOCK_INT, NULL, acc_id_interrupt,
-				   IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING |
-				   IRQF_NO_SUSPEND, "dock_detect", acc);
+		IRQF_DISABLED, "Accessory Detected", acc);
+
 	if (unlikely(ret < 0)) {
 		pr_err("[30pin] request dock_irq failed.\n");
 		return ret;
@@ -446,11 +445,19 @@ static int acc_con_probe(struct platform_device *pdev)
 
 	INIT_WORK(&acc->dwork, acc_con_worker);
 	acc->con_workqueue = create_singlethread_workqueue("acc_con_workqueue");
-	acc_con_interrupt_init(acc);
+	retval = acc_con_interrupt_init(acc);
+	if (retval != 0) {
+		pr_err("[30pin] acc_con_interrupt_init failed.\n");
+		return retval;
+	}
 
 	INIT_WORK(&acc->awork, acc_id_worker);
 	acc->id_workqueue = create_singlethread_workqueue("acc_id_workqueue");
-	acc_id_interrupt_init(acc);
+	retval = acc_id_interrupt_init(acc);
+	if (retval != 0) {
+		pr_err("[30pin] acc_id_interrupt_init failed.\n");
+		return retval;
+	}
 
 	retval = enable_irq_wake(IRQ_ACCESSORY_INT);
 	if (unlikely(retval < 0)) {
