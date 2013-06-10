@@ -166,8 +166,8 @@ ssize_t s5p_cec_write(struct file *file, const char __user *buffer,
 	return count;
 }
 
-int s5p_cec_ioctl(struct inode *inode, struct file *file, u32 cmd,
-	unsigned long arg)
+static long s5p_cec_ioctl(struct file *file,
+	unsigned int cmd, unsigned long arg)
 {
 	u32 laddr;
 
@@ -208,8 +208,8 @@ static const struct file_operations cec_fops = {
 	.release = s5p_cec_release,
 	.read    = s5p_cec_read,
 	.write   = s5p_cec_write,
-	.ioctl   = s5p_cec_ioctl,
 	.poll    = s5p_cec_poll,
+	.unlocked_ioctl = s5p_cec_ioctl,
 };
 
 static struct miscdevice cec_misc_device = {
