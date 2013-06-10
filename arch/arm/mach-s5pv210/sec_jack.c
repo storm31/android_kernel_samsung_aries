@@ -417,9 +417,8 @@ static int sec_jack_probe(struct platform_device *pdev)
 	irq_set_irq_type(send_end->eint, IRQ_TYPE_EDGE_BOTH);
 
 	ret = request_threaded_irq(send_end->eint, NULL,
-				   send_end_irq_handler,
-				   IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING |
-				   IRQF_ONESHOT, "sec_headset_send_end", send_end);
+		send_end_irq_handler, IRQF_DISABLED,
+		"sec_headset_send_end", send_end);
 
 	SEC_JACKDEV_DBG("sended isr send=0X%x, ret =%d", send_end->eint, ret);
 	if (ret < 0)
