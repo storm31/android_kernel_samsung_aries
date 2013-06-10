@@ -225,7 +225,7 @@ static struct miscdevice cec_misc_device = {
  * Handles interrupt requests from CEC hardware. \n
  * Action depends on current state of CEC hardware.
  */
-irqreturn_t s5p_cec_irq_handler(int irq, void *dev_id)
+static irqreturn_t s5p_cec_irq_handler(int irq, void *dev_id)
 {
 
 	u32 status = 0;
@@ -317,8 +317,10 @@ static int __init s5p_cec_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	ret = request_irq(irq_num, s5p_cec_irq_handler, IRQF_DISABLED,
-		pdev->name, &pdev->id);
+	ret = request_threaded_irq(irq_num, NULL,
+		s5p_cec_irq_handler, IRQF_DISABLED,
+		"s5p_cec_irq", pdev);
+
 	if (ret != 0) {
 		printk(KERN_ERR  "failed to install %s irq (%d)\n", "cec", ret);
 		return ret;
