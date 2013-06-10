@@ -358,7 +358,7 @@ static int s5p_cec_remove(struct platform_device *pdev)
 /*
  *  Suspend
  */
-int s5p_cec_suspend(struct platform_device *dev, pm_message_t state)
+int s5p_cec_suspend(struct device* dev)
 {
 	if (hdmi_on)
 		s5p_tv_clk_gate(false);
@@ -369,26 +369,29 @@ int s5p_cec_suspend(struct platform_device *dev, pm_message_t state)
 /*
  *  Resume
  */
-int s5p_cec_resume(struct platform_device *dev)
+int s5p_cec_resume(struct device* dev)
 {
 	if (hdmi_on)
 		s5p_tv_clk_gate(true);
 
 	return 0;
 }
-#else
-#define s5p_cec_suspend NULL
-#define s5p_cec_resume NULL
+
+static const struct dev_pm_ops s5p_cec_pm_ops = {
+	.suspend = s5p_cec_suspend,
+	.resume = s5p_cec_resume,
+};
 #endif
 
 static struct platform_driver s5p_cec_driver = {
 	.probe		= s5p_cec_probe,
 	.remove		= s5p_cec_remove,
-	.suspend	= s5p_cec_suspend,
-	.resume		= s5p_cec_resume,
 	.driver		= {
 		.name	= "s5p-cec",
 		.owner	= THIS_MODULE,
+#ifdef CONFIG_PM
+		.pm     = &s5p_cec_pm_ops,
+#endif
 	},
 };
 
