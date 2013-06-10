@@ -287,7 +287,17 @@ int tv_phy_power(bool on)
 
 int s5p_tv_clk_gate(bool on)
 {
+#ifdef CONFIG_MACH_P1
+	int ret = 0;
+#endif
 	if (on) {
+#ifdef CONFIG_MACH_P1
+	if (!s5ptv_status.is_reg_tv_reg_enabled) {
+		ret = regulator_enable(s5ptv_status.tv_regulator);
+		if (ret)
+			s5ptv_status.is_reg_tv_reg_enabled = 1;
+	}
+#endif
 #ifdef CONFIG_S5PV210_PM_LEGACY
 		if (s5pv210_pd_enable("vp_pd") < 0) {
 			printk(KERN_ERR "[Error]The power is not on for VP\n");
@@ -349,6 +359,13 @@ int s5p_tv_clk_gate(bool on)
 			printk(KERN_ERR "[Error]The power is not off for HDMI\n");
 			goto err_pm;
 		}
+#endif
+#ifdef CONFIG_MACH_P1
+	if (s5ptv_status.is_reg_tv_reg_enabled) {
+		ret = regulator_force_disable(s5ptv_status.tv_regulator);
+		if (ret)
+			s5ptv_status.is_reg_tv_reg_enabled = 0;
+	}
 #endif
 	}
 
@@ -599,6 +616,9 @@ int s5p_tv_v_release(struct file *filp)
 
 	mutex_unlock(mutex_for_i2c);
 #endif
+#ifdef CONFIG_MACH_P1
+	s5p_tv_clk_gate(false);
+#endif
 
 #ifdef CONFIG_CPU_S5PV210
 #ifdef CONFIG_PM
@@ -617,11 +637,11 @@ int s5p_tv_v_release(struct file *filp)
 #endif
 #endif
 
-	s5p_tv_clk_gate(false);
 #ifdef CONFIG_MACH_P1
 	Isdrv_open = 0;
 	TVout_LDO_ctrl(false);
 #else //CONFIG_MACH_ARIES
+	s5p_tv_clk_gate(false);
 	tv_phy_power(false);
 #endif
 	return 0;
@@ -914,10 +934,10 @@ void TVout_LDO_ctrl(int enable)
 		if (gpio_get_value(GPIO_ACCESSORY_INT)) {
 
 			if (s5ptv_status.suspend_status)
-				msleep(200);
+				msleep(520);
 
 			if (Isdrv_open)
-				msleep(200);
+				msleep(50);
 
 			if ((gpio_get_value(GPIO_ACCESSORY_INT))&&(IsPower_on)&& (!Isdrv_open)) {
 				if (s5ptv_status.is_reg_tv_tv_enabled) {
@@ -946,17 +966,16 @@ void s5p_handle_cable(void)
 	char env_buf[120];
 	char *envp[2];
 	int env_offset = 0;
-	bool previous_hpd_status;
+	bool previous_hpd_status = s5ptv_status.hpd_status;
 
-	printk(KERN_INFO "%s....start", __func__);
+	printk(KERN_INFO "%s....start\n", __func__);
 #ifdef CONFIG_MACH_ARIES
 	if ((s5ptv_status.tvout_param.out_mode != TVOUT_OUTPUT_HDMI) && \
 	(s5ptv_status.tvout_param.out_mode != TVOUT_OUTPUT_HDMI_RGB) && \
 		(s5ptv_status.tvout_param.out_mode != TVOUT_OUTPUT_DVI))
 		return;
 #endif
-
-	previous_hpd_status = s5ptv_status.hpd_status;
+	msleep(50);
 #ifdef CONFIG_HDMI_HPD
 	s5ptv_status.hpd_status = s5p_hpd_get_state();
 #else
@@ -966,12 +985,18 @@ void s5p_handle_cable(void)
 	memset(env_buf, 0, sizeof(env_buf));
 
 	if (previous_hpd_status == s5ptv_status.hpd_status) {
-		BASEPRINTK("same hpd_status value: %d\n", previous_hpd_status);
+		printk(KERN_INFO "same hpd_status value: %d\n", previous_hpd_status);
 		return;
 	}
 
 	if (s5ptv_status.hpd_status) {
 		BASEPRINTK("\n hdmi cable is connected \n");
+#ifdef CONFIG_MACH_P1
+		sprintf(env_buf, "HDMI_STATE=online");
+		envp[env_offset++] = env_buf;
+		envp[env_offset] = NULL;
+		kobject_uevent_env(&(s5p_tvout[0].dev.kobj), KOBJ_CHANGE, envp);
+#endif
 
 		if (s5ptv_status.suspend_status)
 			return;
@@ -986,7 +1011,9 @@ void s5p_handle_cable(void)
 		if ((s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_HDMI)\
 		|| (s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_HDMI_RGB))
 */
-			tv_phy_power(true);
+#ifdef CONFIG_MACH_ARIES
+		tv_phy_power(true);
+#endif
 #endif
 		/* tv on */
 		if (s5ptv_status.tvout_output_enable)
@@ -1004,21 +1031,30 @@ void s5p_handle_cable(void)
 		if (s5ptv_status.grp_layer_enable[1])
 			_s5p_grp_start(VM_GPR1_LAYER);
 
+		printk("[TVOUT] hdmi cable is connected\n");
+
+#ifdef CONFIG_MACH_ARIES
 		sprintf(env_buf, "HDMI_STATE=online");
 		envp[env_offset++] = env_buf;
 		envp[env_offset] = NULL;
 		kobject_uevent_env(&(s5p_tvout[0].dev.kobj), KOBJ_CHANGE, envp);
+#endif
 
 	} else {
 		BASEPRINTK("\n hdmi cable is disconnected \n");
 
-		if (s5ptv_status.suspend_status)
+		if (s5ptv_status.suspend_status) {
+#ifdef CONFIG_MACH_P1
+			s5p_tv_clk_gate(true);
+			tv_phy_power(true);
+#else
 			return;
+#endif
+		}
 
 		if (s5ptv_status.vp_layer_enable) {
 			_s5p_vlayer_stop();
 			s5ptv_status.vp_layer_enable = true;
-
 		}
 
 		/* grp0 layer stop */
@@ -1036,8 +1072,13 @@ void s5p_handle_cable(void)
 		/* tv off */
 		if (s5ptv_status.tvout_output_enable) {
 			_s5p_tv_if_stop();
+#ifdef CONFIG_MACH_ARIES
 			s5ptv_status.tvout_output_enable = true;
 			s5ptv_status.tvout_param_available = true;
+#else // CONFIG_MACH_P1
+            s5ptv_status.tvout_output_enable = false;
+            s5ptv_status.tvout_param_available = false;
+#endif
 		}
 
 #ifdef CONFIG_PM
@@ -1047,19 +1088,22 @@ void s5p_handle_cable(void)
 		if ((s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_HDMI) ||\
 		(s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_HDMI_RGB))
 */
+#ifdef CONFIG_MACH_ARIES
 			tv_phy_power(false);
+#endif
 #endif
 
 		sprintf(env_buf, "HDMI_STATE=offline");
 		envp[env_offset++] = env_buf;
 		envp[env_offset] = NULL;
 		kobject_uevent_env(&(s5p_tvout[0].dev.kobj), KOBJ_CHANGE, envp);
-		printk("[TVOUT]hdmi cable is disconnected\n");
+		printk("[TVOUT] hdmi cable is disconnected\n");
 
 #ifdef CONFIG_CPU_FREQ_S5PV210
 		s5pv210_set_cpufreq_level(NORMAL_TABLE);
 #endif /* CONFIG_CPU_FREQ_S5PV210 */
 	}
+	printk("[TVOUT] %s\n", env_buf);
 }
 
 #define S5P_TVMAX_CTRLS		ARRAY_SIZE(s5p_tvout)
@@ -1091,6 +1135,12 @@ static int __devinit s5p_tv_probe(struct platform_device *pdev)
 	}
 
 #ifdef CONFIG_MACH_P1
+	if (!s5ptv_status.is_reg_tv_tvout_enabled) {
+		ret = regulator_enable(s5ptv_status.tv_tvout);
+		if (ret)
+			s5ptv_status.is_reg_tv_tvout_enabled = 1;
+	}
+
 	s5ptv_status.tv_tv = regulator_get(NULL, "tv");
 	if (IS_ERR(s5ptv_status.tv_tv)) {
 		printk(KERN_ERR "%s %d: failed to get resource %s\n",
@@ -1142,12 +1192,10 @@ static int __devinit s5p_tv_probe(struct platform_device *pdev)
 
 #ifdef CONFIG_CPU_S5PV210
 #ifdef CONFIG_HDMI_HPD
-#ifdef CONFIG_MACH_P1
 	if(0 == gpio_get_value(GPIO_ACCESSORY_INT))  //docking station attached
     	s5ptv_status.hpd_status= s5p_hpd_get_state();
 	else
-#endif
-	s5ptv_status.hpd_status = 0;
+		s5ptv_status.hpd_status= 0;
 #else
 	s5ptv_status.hpd_status = 0;
 #endif
@@ -1241,6 +1289,20 @@ static int __devinit s5p_tv_probe(struct platform_device *pdev)
 
 	s5p_tv_clk_gate(false);
 #endif
+
+#ifdef CONFIG_MACH_P1
+	if (s5ptv_status.is_reg_tv_tvout_enabled) {
+		ret = regulator_force_disable(s5ptv_status.tv_tvout);
+		if (ret)
+			s5ptv_status.is_reg_tv_tvout_enabled = 0;
+	}
+	if (s5ptv_status.is_reg_tv_tv_enabled) {
+		ret = regulator_force_disable(s5ptv_status.tv_tv);
+		if (ret)
+			s5ptv_status.is_reg_tv_tv_enabled = 0;
+	}
+	printk("%s: LDO3_8 is disabled by TV \n", __func__);
+#endif
 	printk(KERN_INFO "%s TV Probing is done\n", __func__);
 	return 0;
 
@@ -1270,7 +1332,9 @@ out:
  */
 static int s5p_tv_remove(struct platform_device *pdev)
 {
+#ifdef CONFIG_MACH_ARIES
 	int ret;
+#endif
 	__s5p_hdmi_release(pdev);
 	__s5p_sdout_release(pdev);
 	__s5p_mixer_release(pdev);
@@ -1307,6 +1371,7 @@ static int s5p_tv_remove(struct platform_device *pdev)
 	free_irq(IRQ_EINT5, pdev);
 #endif
 
+#ifdef CONFIG_MACH_ARIES
 	if (s5ptv_status.is_reg_tv_reg_enabled) {
 		ret = regulator_force_disable(s5ptv_status.tv_regulator);
 		if (ret)
@@ -1319,14 +1384,10 @@ static int s5p_tv_remove(struct platform_device *pdev)
 		if (ret)
 			s5ptv_status.is_reg_tv_tvout_enabled = 0;
 	}
+#endif
 	regulator_put(s5ptv_status.tv_tvout);
 
 #ifdef CONFIG_MACH_P1
-	if (s5ptv_status.is_reg_tv_tv_enabled) {
-		ret = regulator_force_disable(s5ptv_status.tv_tv);
-		if (ret)
-			s5ptv_status.is_reg_tv_tv_enabled = 0;
-	}
 	regulator_put(s5ptv_status.tv_tv);
 #endif
 
@@ -1374,6 +1435,13 @@ void s5p_tv_early_suspend(struct early_suspend *h)
 			s5ptv_status.grp_layer_enable[VM_GPR0_LAYER] = true;
 		}
 
+#ifdef CONFIG_MACH_P1
+	    if ((s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_HDMI) ||
+			(s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_HDMI_RGB) ||
+			(s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_DVI))
+			tv_phy_power( false );
+#endif
+
 		/* tv off */
 		if (s5ptv_status.tvout_output_enable) {
 			_s5p_tv_if_stop();
@@ -1385,13 +1453,9 @@ void s5p_tv_early_suspend(struct early_suspend *h)
 		s5p_tv_clk_gate(false);
 #ifdef CONFIG_MACH_ARIES
 		if ((s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_HDMI) ||
-		(s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_HDMI_RGB))
-#else // CONFIG_MACH_P1
-	    if ((s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_HDMI) ||
-			(s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_HDMI_RGB) ||
-			(s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_DVI))
+			(s5ptv_status.tvout_param.out_mode == TVOUT_OUTPUT_HDMI_RGB))
+			tv_phy_power( false );
 #endif
-			tv_phy_power(false);
 
 #ifdef CONFIG_CPU_FREQ_S5PV210
 		s5pv210_set_cpufreq_level(NORMAL_TABLE);

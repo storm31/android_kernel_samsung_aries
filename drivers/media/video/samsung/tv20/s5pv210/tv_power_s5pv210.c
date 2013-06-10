@@ -19,8 +19,12 @@
 #include <mach/map.h>
 #include <mach/regs-clock.h>
 
+#ifdef CONFIG_MACH_P1
+#include <linux/platform_device.h>
+#include "tv_out_s5pv210.h"
+#else
 #include "../s5p_tv.h"
-
+#endif
 
 #if defined USE_POWERCON_FUNCTION
 #undef USE_POWERCON_FUNCTION
@@ -49,7 +53,9 @@
 #define TVPWR_TV_BLOCK_STATUS(a)    ((0x1<<4)&a)
 
 static unsigned short g_dacPwrOn;
+#ifdef CONFIG_MACH_ARIES
 extern struct s5p_tv_status s5ptv_status;
+#endif
 
 void __s5p_tv_power_init_mtc_stable_counter(unsigned int value)
 {
@@ -73,36 +79,27 @@ void __s5p_tv_powerinitialize_dac_onoff(bool on)
 
 void __s5p_tv_powerset_dac_onoff(bool on)
 {
+#ifdef CONFIG_MACH_ARIES
 	int ret;
+#endif
 	TVPMPRINTK("(%d)\n\r", on);
 
 	if (on) {
+#ifdef CONFIG_MACH_ARIES
 		if (!s5ptv_status.is_reg_tv_tvout_enabled) {
 			ret = regulator_enable(s5ptv_status.tv_tvout);
 			if (ret)
 				s5ptv_status.is_reg_tv_tvout_enabled = 1;
 		}
-#ifdef CONFIG_MACH_P1
-		if (!s5ptv_status.is_reg_tv_tv_enabled) {
-			ret = regulator_enable(s5ptv_status.tv_tv);
-			if (ret)
-				s5ptv_status.is_reg_tv_tv_enabled = 1;
-		}
 #endif
-
 		writel(S5P_DAC_ENABLE, S5P_DAC_CONTROL);
 	} else {
 		writel(S5P_DAC_DISABLE, S5P_DAC_CONTROL);
+#ifdef CONFIG_MACH_ARIES
 		if (s5ptv_status.is_reg_tv_tvout_enabled) {
 			ret = regulator_force_disable(s5ptv_status.tv_tvout);
 			if (ret)
 				s5ptv_status.is_reg_tv_tvout_enabled = 0;
-		}
-#ifdef CONFIG_MACH_P1
-		if (s5ptv_status.is_reg_tv_tv_enabled) {
-			ret = regulator_force_disable(s5ptv_status.tv_tv);
-			if (ret)
-				s5ptv_status.is_reg_tv_tv_enabled = 0;
 		}
 #endif
 	}
@@ -131,17 +128,20 @@ bool __s5p_tv_power_get_dac_power_status(void)
 
 void __s5p_tv_poweron(void)
 {
+#ifdef CONFIG_MACH_ARIES
 	int ret;
+#endif
 	TVPMPRINTK("0x%08x\n\r", readl(S3C_VA_SYS + 0xE804));
 
 	writel(readl(S3C_VA_SYS + 0xE804) | 0x1, S3C_VA_SYS + 0xE804);
 
+#ifdef CONFIG_MACH_ARIES
 	if (!s5ptv_status.is_reg_tv_reg_enabled) {
 		ret = regulator_enable(s5ptv_status.tv_regulator);
 		if (ret)
 			s5ptv_status.is_reg_tv_reg_enabled = 1;
 	}
-
+#endif
 #ifdef CONFIG_MACH_P1
 	writel(readl(S5P_NORMAL_CFG) | TVPWR_SUBSYSTEM_ACTIVE, S5P_NORMAL_CFG);
 
@@ -156,15 +156,19 @@ void __s5p_tv_poweron(void)
 
 void __s5p_tv_poweroff(void)
 {
+#ifdef CONFIG_MACH_ARIES
 	int ret;
+#endif
 	TVPMPRINTK("()\n\r");
 
 	__s5p_tv_powerset_dac_onoff(0);
+#ifdef CONFIG_MACH_ARIES
 	if (s5ptv_status.is_reg_tv_reg_enabled) {
 		ret = regulator_force_disable(s5ptv_status.tv_regulator);
 		if (ret)
 			s5ptv_status.is_reg_tv_reg_enabled = 0;
 	}
+#endif
 
 #ifdef CONFIG_MACH_P1
 	writel(readl(S5P_NORMAL_CFG) & ~TVPWR_SUBSYSTEM_ACTIVE, S5P_NORMAL_CFG);
