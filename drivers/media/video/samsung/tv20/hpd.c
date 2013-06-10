@@ -380,7 +380,7 @@ static int s5p_hpd_remove(struct platform_device *pdev)
 /*
  *  Suspend
  */
-int s5p_hpd_suspend(struct platform_device *dev, pm_message_t state)
+int s5p_hpd_suspend(struct device* dev)
 {
 	return 0;
 }
@@ -388,23 +388,25 @@ int s5p_hpd_suspend(struct platform_device *dev, pm_message_t state)
 /*
  *  Resume
  */
-int s5p_hpd_resume(struct platform_device *dev)
+int s5p_hpd_resume(struct device* dev)
 {
 	return 0;
 }
-#else
-#define s5p_hpd_suspend NULL
-#define s5p_hpd_resume NULL
+static const struct dev_pm_ops s5p_hpd_pm_ops = {
+	.suspend = s5p_hpd_suspend,
+	.resume = s5p_hpd_resume,
+};
 #endif
 
 static struct platform_driver s5p_hpd_driver = {
 	.probe		= s5p_hpd_probe,
 	.remove		= s5p_hpd_remove,
-	.suspend	= s5p_hpd_suspend,
-	.resume		= s5p_hpd_resume,
 	.driver		= {
 		.name	= "s5p-hpd",
 		.owner	= THIS_MODULE,
+#ifdef CONFIG_PM
+		.pm     = &s5p_hpd_pm_ops,
+#endif
 	},
 };
 
