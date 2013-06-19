@@ -105,8 +105,6 @@ static const struct voltage_map_desc *ldo_voltage_map[] = {
 	&buck12_voltage_map_desc,	/* BUCK2 */
 	&buck3_voltage_map_desc,	/* BUCK3 */
 	&buck4_voltage_map_desc,	/* BUCK4 */
-	NULL,
-	NULL,
 };
 
 static inline int max8998_get_ldo(struct regulator_dev *rdev)
@@ -277,7 +275,7 @@ static int max8998_get_voltage_register(struct regulator_dev *rdev,
 	case MAX8998_BUCK4:
 		reg = MAX8998_REG_BUCK4;
 		break;
-        case MAX8998_ESAFEOUT1 ... MAX8998_ESAFEOUT2:
+	case MAX8998_ESAFEOUT1 ... MAX8998_ESAFEOUT2:
 		reg = MAX8998_REG_CHGR2;
 		break;
 	default:
@@ -343,6 +341,8 @@ static int max8998_set_voltage(struct regulator_dev *rdev,
 	if (desc->min + desc->step*i > max_vol)
 		return -EINVAL;
 
+	*selector = i;
+
 	ret = max8998_get_voltage_register(rdev, &reg, &shift, &mask);
 	if (ret)
 		return ret;
@@ -369,7 +369,7 @@ static int max8998_set_voltage(struct regulator_dev *rdev,
 }
 
 static const int safeoutvolt[] = {
-  5000000
+	5000000
 };
 
 static int max8998_set_voltage_safeout(struct regulator_dev *rdev, int min_uV, int max_uV, unsigned *selector)
@@ -393,6 +393,8 @@ static int max8998_set_voltage_safeout(struct regulator_dev *rdev, int min_uV, i
 
 	if (i >= ARRAY_SIZE(safeoutvolt))
 		return -EINVAL;
+
+	*selector = i;
 
 	ret = max8998_get_voltage_register(rdev, &reg, &shift, &mask);
 
