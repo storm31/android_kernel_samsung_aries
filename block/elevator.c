@@ -995,23 +995,34 @@ static int elevator_switch(struct request_queue *q, struct elevator_type *new_e)
 		return err;
 	}
 
-	/* turn on BYPASS and drain all requests w/ elevator private data */
+	/*
+	 * Turn on BYPASS and drain all requests w/ elevator private data
+	 */
 	elv_quiesce_start(q);
 
-	/* unregister old queue, register new one and kill old elevator */
-	if (q->elevator->registered) {
-		elv_unregister_queue(q);
-		err = __elv_register_queue(q, e);
+	/*
+	 * Remember old elevator.
+	 */
+	old_elevator = q->elevator;
+
+	/*
+	 * attach and start new elevator
+	 */
+	spin_lock_irq(q->queue_lock);
+	elevator_attach(q, e, data);
+	spin_unlock_irq(q->queue_lock);
+
+	if (old_elevator->registered) {
+		__elv_unregister_queue(old_elevator);
+
+		err = elv_register_queue(q);
 		if (err)
 			goto fail_register;
 	}
 
-	/* done, replace the old one with new one and turn off BYPASS */
-	spin_lock_irq(q->queue_lock);
-	old_elevator = q->elevator;
-	q->elevator = e;
-	spin_unlock_irq(q->queue_lock);
-
+	/*
+	 * finally exit old elevator and turn off BYPASS.
+	 */
 	elevator_exit(old_elevator);
 	elv_quiesce_end(q);
 
