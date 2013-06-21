@@ -290,6 +290,34 @@ static void cmc623_pwm_gpio_init(void)
 //    s3c_gpio_setpull(GPIO_LCD_CABC_PWM_R05, S3C_GPIO_PULL_NONE);
 }
 
+#ifdef CONFIG_PM
+static int cmc623_pwm_suspend(struct device *swi_dev)
+{
+	struct backlight_device *bd = dev_get_drvdata(swi_dev);
+
+	cmc623_pwm_suspended = 1;
+	cmc623_pwm_send_intensity(bd);
+
+	return 0;
+}
+
+static int cmc623_pwm_resume(struct device *swi_dev)
+{
+	struct backlight_device *bd = dev_get_drvdata(swi_dev);
+
+	bd->props.brightness = CMC623_PWM_DEFAULT_INTENSITY;
+	cmc623_pwm_suspended = 0;
+	cmc623_pwm_send_intensity(bd);
+
+	return 0;
+}
+
+static const struct dev_pm_ops cmc623_pm_ops = {
+	.suspend = cmc623_pwm_suspend,
+	.resume = cmc623_pwm_resume,
+};
+#endif
+
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void cmc623_pwm_early_suspend(struct early_suspend *h)
 {
@@ -445,6 +473,9 @@ static struct platform_driver cmc623_pwm_driver = {
 	.driver		= {
 		.name	= "cmc623_pwm_bl",
 		.owner	= THIS_MODULE,
+#ifdef CONFIG_PM
+		.pm		= &cmc623_pm_ops,
+#endif
 	},
 	.probe		= cmc623_pwm_probe,
 	.remove		= cmc623_pwm_remove,
