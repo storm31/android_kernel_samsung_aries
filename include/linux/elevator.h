@@ -79,11 +79,11 @@ struct elv_fs_entry {
  */
 struct elevator_type
 {
+	struct list_head list;
 	struct elevator_ops ops;
 	struct elv_fs_entry *elevator_attrs;
 	char elevator_name[ELV_NAME_MAX];
 	struct module *elevator_owner;
-	struct list_head list;
 };
 
 /*
@@ -91,9 +91,10 @@ struct elevator_type
  */
 struct elevator_queue
 {
-	struct elevator_type *type;
+	struct elevator_ops *ops;
 	void *elevator_data;
 	struct kobject kobj;
+	struct elevator_type *elevator_type;
 	struct mutex sysfs_lock;
 	struct hlist_head *hash;
 	unsigned int registered:1;
@@ -152,7 +153,7 @@ extern struct request *elv_rb_latter_request(struct request_queue *, struct requ
 /*
  * rb support functions.
  */
-extern void elv_rb_add(struct rb_root *, struct request *);
+extern struct request *elv_rb_add(struct rb_root *, struct request *);
 extern void elv_rb_del(struct rb_root *, struct request *);
 extern struct request *elv_rb_find(struct rb_root *, sector_t);
 
