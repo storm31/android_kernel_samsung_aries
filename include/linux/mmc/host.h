@@ -224,7 +224,6 @@ struct mmc_host {
 	unsigned int		clk_old;	/* old clock value cache */
 	spinlock_t		clk_lock;	/* lock for clk fields */
 	struct mutex		clk_gate_mutex;	/* mutex for clock gating */
-	bool			clk_disabled;	/* gating is temporarily disabled */
 #endif
 
 	/* host specific block data */

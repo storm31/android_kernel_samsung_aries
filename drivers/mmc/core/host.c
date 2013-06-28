@@ -178,7 +178,7 @@ void mmc_host_clk_release(struct mmc_host *host)
 	spin_lock_irqsave(&host->clk_lock, flags);
 	host->clk_requests--;
 	if (mmc_host_may_gate_card(host->card) &&
-		!host->clk_requests && !host->clk_disabled)
+	    !host->clk_requests)
 		queue_work(system_nrt_wq, &host->clk_gate_work);
 	spin_unlock_irqrestore(&host->clk_lock, flags);
 }
@@ -204,42 +204,6 @@ unsigned int mmc_host_clk_rate(struct mmc_host *host)
 }
 
 /**
- *	mmc_host_clk_gate_disable - temporarily disable clock gating
- *	@host: host to disable clock gating
- *
- *	Function temporarily disables aggressive clock gating. This is to
- *	prevent clock gating worker to kick in for example in a middle of
- *	ios structure update.
- *
- *	After this function returns, it is guaranteed that no clock gating
- *	takes place until it is re-enabled again.
- */
-void mmc_host_clk_gate_disable(struct mmc_host *host)
-{
-	spin_lock_irq(&host->clk_lock);
-	WARN_ON(host->clk_disabled);
-	host->clk_disabled = true;
-	spin_unlock_irq(&host->clk_lock);
-
-	cancel_work_sync(&host->clk_gate_work);
-}
-
-/**
- *	mmc_host_clk_gate_enable - re-enables clock gating
- *	@host: host to re-enable clock gating
- *
- *	Allows aggressive clock gating framework to continue gating the
- *	host clock.
- */
-void mmc_host_clk_gate_enable(struct mmc_host *host)
-{
-	spin_lock_irq(&host->clk_lock);
-	WARN_ON(!host->clk_disabled);
-	host->clk_disabled = false;
-	spin_unlock_irq(&host->clk_lock);
-}
-
-/**
  *	mmc_host_clk_init - set up clock gating code
  *	@host: host with potential clock to control
  */
@@ -249,7 +213,6 @@ static inline void mmc_host_clk_init(struct mmc_host *host)
 	/* Hold MCI clock for 8 cycles by default */
 	host->clk_delay = 8;
 	host->clk_gated = false;
-	host->clk_disabled = false;
 	INIT_WORK(&host->clk_gate_work, mmc_host_clk_gate_work);
 	spin_lock_init(&host->clk_lock);
 	mutex_init(&host->clk_gate_mutex);
