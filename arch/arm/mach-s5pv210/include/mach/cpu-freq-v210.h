@@ -16,6 +16,7 @@
 
 enum perf_level {
 #ifdef CONFIG_MACH_P1
+	OC2, //1.4GHz
 	OC1, //1.3GHz
 #endif
 	OC0, //1.2GHz
