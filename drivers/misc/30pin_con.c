@@ -571,7 +571,8 @@ static int acc_con_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static int acc_con_suspend(struct platform_device *pdev, pm_message_t state)
+#ifdef CONFIG_PM
+static int acc_con_suspend(struct device *dev)
 {
 	pr_info("[30pin] %s\n", __func__);
 	MHD_HW_Off();
@@ -579,9 +580,9 @@ static int acc_con_suspend(struct platform_device *pdev, pm_message_t state)
 	return 0;
 }
 
-static int acc_con_resume(struct platform_device *pdev)
+static int acc_con_resume(struct device *dev)
 {
-	struct acc_con_info *acc = platform_get_drvdata(pdev);
+	struct acc_con_info *acc = dev_get_drvdata(dev);
 	int dock_state;
 	pr_info("[30pin] %s\n", __func__);
 
@@ -594,14 +595,21 @@ static int acc_con_resume(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct dev_pm_ops acc_con_pm_ops = {
+	.suspend	= acc_con_suspend,
+	.resume		= acc_con_resume,
+};
+#endif
+
 static struct platform_driver acc_con_driver = {
 	.probe		= acc_con_probe,
 	.remove		= acc_con_remove,
-	.suspend	= acc_con_suspend,
-	.resume		= acc_con_resume,
 	.driver		= {
 		.name		= "acc_con",
 		.owner		= THIS_MODULE,
+#ifdef CONFIG_PM
+		.pm         = &acc_con_pm_ops,
+#endif
 	},
 };
 

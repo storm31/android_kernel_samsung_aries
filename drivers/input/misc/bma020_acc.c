@@ -524,8 +524,8 @@ static int bma020_accelerometer_probe( struct platform_device* pdev )
 	return bma020_acc_start();
 }
 
-
-static int bma020_accelerometer_suspend( struct platform_device* pdev, pm_message_t state )
+#ifdef CONFIG_PM
+static int bma020_accelerometer_suspend( struct device *dev )
 {
 	printk(" %s \n",__func__);
 	bma020_set_mode( BMA020_MODE_SLEEP );
@@ -533,22 +533,28 @@ static int bma020_accelerometer_suspend( struct platform_device* pdev, pm_messag
 }
 
 
-static int bma020_accelerometer_resume( struct platform_device* pdev )
+static int bma020_accelerometer_resume( struct device *dev )
 {
 	printk(" %s \n",__func__);
 	bma020_set_mode( BMA020_MODE_NORMAL );
 	return 0;
 }
 
+static const struct dev_pm_ops bma020_accelerometer_pm_ops = {
+	.suspend	= bma020_accelerometer_suspend,
+	.resume		= bma020_accelerometer_resume,
+};
+#endif
 
 static struct platform_device *bma020_accelerometer_device;
 
 static struct platform_driver bma020_accelerometer_driver = {
 	.probe 	 = bma020_accelerometer_probe,
-	.suspend = bma020_accelerometer_suspend,
-	.resume  = bma020_accelerometer_resume,
 	.driver  = {
 		.name = "bma020-accelerometer",
+#ifdef CONFIG_PM
+		.pm	= &bma020_accelerometer_pm_ops,
+#endif
 	}
 };
 

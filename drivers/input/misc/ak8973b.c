@@ -51,6 +51,7 @@
 #include <mach/regs-gpio.h>
 #include <asm/uaccess.h>
 #include <linux/delay.h>
+#include <linux/platform_device.h>
 #include <linux/input.h>
 #include <linux/workqueue.h>
 #include <linux/freezer.h>
@@ -550,18 +551,18 @@ static int __exit ak8973_remove(struct i2c_client *client)
 	return 0;
 }
 
-static int ak8973_suspend( struct platform_device* pdev, pm_message_t state )
+static int ak8973_suspend( struct device* dev )
 {
-	printk("[Compass] %s \n",__func__);
-	AKECS_SetMode(AKECS_MODE_POWERDOWN);
+	printk("[Compass] %s \n",__func__);	
+	AKECS_SetMode(AKECS_MODE_POWERDOWN);			
 	return 0;
 }
 
 
-static int ak8973_resume( struct platform_device* pdev )
+static int ak8973_resume( struct device* dev )
 {
-	printk("[Compass] %s \n",__func__);
-	AKECS_SetMode(AKECS_MODE_MEASURE);
+	printk("[Compass] %s \n",__func__); 
+	AKECS_SetMode(AKECS_MODE_MEASURE);	
 	wake_up(&open_wq);
 	return 0;
 }
@@ -571,16 +572,21 @@ static const struct i2c_device_id ak8973_id[] = {
 	{}
 };
 
+static const struct dev_pm_ops ak8973b_pm_ops = {
+	.suspend = ak8973_suspend,
+	.resume = ak8973_resume,
+};
+
 MODULE_DEVICE_TABLE(i2c, ak8973_id);
 
 static struct i2c_driver ak8973b_i2c_driver = {
 	.driver = {
 		.name = "ak8973",
+		.owner = THIS_MODULE,
+		.pm = &ak8973b_pm_ops,
 	},
 	.probe = ak8973_probe,
 	.remove = __exit_p(ak8973_remove),
-	.suspend = ak8973_suspend,
-	.resume = ak8973_resume,
 	.id_table = ak8973_id,
 };
 
