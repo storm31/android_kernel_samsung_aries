@@ -44,6 +44,7 @@
 #include <linux/slab.h>
 #include <linux/irq.h>
 #include <linux/miscdevice.h>
+#include <linux/mutex.h>
 #include <linux/gpio.h>
 #include <linux/earlysuspend.h>
 #include <mach/hardware.h>
@@ -64,6 +65,9 @@
 #define E_COMPASS_ADDRESS	0x1c	/* CAD0 : 0, CAD1 : 0 */
 #define I2C_DF_NOTIFY       0x01
 #define IRQ_COMPASS_INT IRQ_EINT(2) /* EINT(2) */
+
+static DEFINE_MUTEX(ak8973b_mutex);
+
 
 static struct i2c_client *this_client;
 
@@ -344,12 +348,14 @@ static long akmd_ioctl(struct file *file, unsigned int cmd,
 	int ret = -1;
 	short mode; /* step_count,*/
 
+	mutex_lock(&ak8973b_mutex);
 	/* check cmd */
 	if(_IOC_TYPE(cmd) != AKMIO)
 	{
 #if DEBUG
 		printk("[Compass] cmd magic type error\n");
 #endif
+		mutex_unlock(&ak8973b_mutex);
 		return -ENOTTY;
 	}
 	if(_IOC_DIR(cmd) & _IOC_READ)
@@ -361,6 +367,7 @@ static long akmd_ioctl(struct file *file, unsigned int cmd,
 #if DEBUG
 		printk("[Compass] cmd access_ok error\n");
 #endif
+		mutex_unlock(&ak8973b_mutex);
 		return -EFAULT;
 	}
 
@@ -446,7 +453,7 @@ static long akmd_ioctl(struct file *file, unsigned int cmd,
 		default:
 			break;
 	}
-
+	mutex_unlock(&ak8973b_mutex);
 	return 0;
 }
 

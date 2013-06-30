@@ -28,6 +28,7 @@
 
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/mutex.h>
 #include <linux/fs.h>
 #include <linux/i2c.h>
 #include <linux/i2c-dev.h>
@@ -87,6 +88,8 @@
 #define SHIFT_ADJ_8G		2*/
 
 #define DEBUG 0
+
+static DEFINE_MUTEX(l3g4200d_mutex);
 
 static unsigned char reg_backup[5];
 static unsigned int fd_cnt = 0;
@@ -752,12 +755,13 @@ static long l3g4200d_ioctl(struct file *file,
 {
 	long err = 0;
 	unsigned char data[6];
-
+	mutex_lock(&l3g4200d_mutex);
 	/* check l3g4200d_client */
 	if (gyro->client == NULL) {
 		#if DEBUG
 		printk(KERN_ERR "I2C driver not install\n");
 		#endif
+		mutex_unlock(&l3g4200d_mutex);
 		return -EFAULT;
 	}
 
@@ -774,30 +778,27 @@ static long l3g4200d_ioctl(struct file *file,
 			#if DEBUG
 			printk(KERN_ERR "copy_from_user error\n");
 			#endif
-			return -EFAULT;
 		}
 		err = l3g4200d_set_range(*data);
-		return err;
+		break;
 
 	case L3G4200D_SET_MODE:
 		if (copy_from_user(data, (unsigned char *)arg, 1) != 0) {
 			#if DEBUG
 			printk(KERN_ERR "copy_to_user error\n");
 			#endif
-			return -EFAULT;
 		}
 		err = l3g4200d_set_mode(*data);
-		return err;
+		break;
 
 	case L3G4200D_SET_BANDWIDTH:
 		if (copy_from_user(data, (unsigned char *)arg, 1) != 0) {
 			#if DEBUG
 			printk(KERN_ERR "copy_from_user error\n");
 			#endif
-			return -EFAULT;
 		}
 		err = l3g4200d_set_bandwidth(*data);
-		return err;
+		break;
 
 	case L3G4200D_READ_GYRO_VALUES:
 		err = l3g4200d_read_gyro_values(
@@ -808,13 +809,14 @@ static long l3g4200d_ioctl(struct file *file,
 			#if DEBUG
 			printk(KERN_ERR "copy_to error\n");
 			#endif
-			return -EFAULT;
 		}
-		return err;
+		break;
 
 	default:
-		return 0;
+		err = 0;
 	}
+	mutex_unlock(&l3g4200d_mutex);
+	return err;
 }
 
 
@@ -1108,11 +1110,11 @@ static int l3g4200d_suspend(struct device* dev)
 	#if DEBUG
 	printk(KERN_INFO "l3g4200d_suspend\n");
 	#endif
-	
+
 	/* TO DO */
 	// before starting self-test, backup register
 	l3g4200d_i2c_read(CTRL_REG1, &reg_backup[0], 5);
-	
+
 #if DEBUG
 	for(i = 0; i < 5; i++)
 		printk("[l3g4200d_suspend] backup reg[%d] = %2x\n", i, reg_backup[i]);
@@ -1126,7 +1128,7 @@ static int l3g4200d_suspend(struct device* dev)
 
 		mutex_unlock(&gyro->lock);
 	}
-		
+
 	l3g4200d_set_mode(PM_OFF);
 	return 0;
 }
@@ -1137,11 +1139,11 @@ static int l3g4200d_resume(struct device* dev)
 	#if DEBUG
 	printk(KERN_INFO "l3g4200d_resume\n");
 	#endif
-	
+
 	/* TO DO */
 	// restore backup register
 	l3g4200d_i2c_write(CTRL_REG1, &reg_backup[0], 5);
-	
+
 #if DEBUG
 	for(i = 0; i < 5; i++)
 		printk("[l3g4200d_resume] backup reg[%d] = %2x\n", i, reg_backup[i]);
@@ -1154,7 +1156,7 @@ static int l3g4200d_resume(struct device* dev)
 
 		mutex_unlock(&gyro->lock);
 	}
-	
+
 	return 0;
 }
 

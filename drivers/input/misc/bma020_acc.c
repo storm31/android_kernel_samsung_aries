@@ -9,6 +9,7 @@
 
 #include <linux/init.h>
 #include <linux/module.h>
+#include <linux/mutex.h>
 #include <linux/kernel.h>
 #include <linux/fs.h>
 #include <linux/errno.h>
@@ -26,6 +27,8 @@
 #include "bma020_acc.h"
 #include "bma020calib.h"
 
+
+static DEFINE_MUTEX(bma020_mutex);
 
 /* add by inter.park */
 //extern void enable_acc_pins(void);
@@ -222,12 +225,15 @@ long bma020_ioctl(struct file *filp, unsigned int cmd,  unsigned long arg)
 	int temp;
 	bma020acc_t accels;
 
+	mutex_lock(&bma020_mutex);
+
 	/* check cmd */
 	if(_IOC_TYPE(cmd) != BMA020_IOC_MAGIC)
 	{
 #if DEBUG
 		printk("cmd magic type error\n");
 #endif
+		mutex_unlock(&bma020_mutex);
 		return -ENOTTY;
 	}
 	if(_IOC_NR(cmd) > BMA020_IOC_MAXNR)
@@ -235,6 +241,7 @@ long bma020_ioctl(struct file *filp, unsigned int cmd,  unsigned long arg)
 #if DEBUG
 		printk("cmd number error\n");
 #endif
+		mutex_unlock(&bma020_mutex);
 		return -ENOTTY;
 	}
 
@@ -247,6 +254,7 @@ long bma020_ioctl(struct file *filp, unsigned int cmd,  unsigned long arg)
 #if DEBUG
 		printk("cmd access_ok error\n");
 #endif
+		mutex_unlock(&bma020_mutex);
 		return -EFAULT;
 	}
 	#if 0
@@ -269,9 +277,9 @@ long bma020_ioctl(struct file *filp, unsigned int cmd,  unsigned long arg)
 #if DEBUG
 				printk("copy_to error\n");
 #endif
-				return -EFAULT;
+				err = -EFAULT;
 			}
-			return err;
+			break;
 
 		case BMA020_SET_RANGE:
 			if(copy_from_user(data,(unsigned char*)arg,1)!=0)
@@ -279,10 +287,11 @@ long bma020_ioctl(struct file *filp, unsigned int cmd,  unsigned long arg)
 #if DEBUG
 				printk("[BMA020] copy_from_user error\n");
 #endif
+				mutex_unlock(&bma020_mutex);
 				return -EFAULT;
 			}
 			err = bma020_set_range(*data);
-			return err;
+			break;
 
 		case BMA020_SET_MODE:
 			if(copy_from_user(data,(unsigned char*)arg,1)!=0)
@@ -290,10 +299,11 @@ long bma020_ioctl(struct file *filp, unsigned int cmd,  unsigned long arg)
 #if DEBUG
 				printk("[BMA020] copy_from_user error\n");
 #endif
+				mutex_unlock(&bma020_mutex);
 				return -EFAULT;
 			}
 			err = bma020_set_mode(*data);
-			return err;
+			break;
 
 		case BMA020_SET_BANDWIDTH:
 			if(copy_from_user(data,(unsigned char*)arg,1)!=0)
@@ -301,10 +311,11 @@ long bma020_ioctl(struct file *filp, unsigned int cmd,  unsigned long arg)
 #if DEBUG
 				printk("[BMA020] copy_from_user error\n");
 #endif
+				mutex_unlock(&bma020_mutex);
 				return -EFAULT;
 			}
 			err = bma020_set_bandwidth(*data);
-			return err;
+			break;
 
 		/* offset calibration routine */
 		case BMA020_CALIBRATION:
@@ -312,6 +323,7 @@ long bma020_ioctl(struct file *filp, unsigned int cmd,  unsigned long arg)
 			if(copy_from_user((bma020acc_t*)data,(bma020acc_t*)arg, 6)!=0)
 			{
 				printk("copy_from_user error\n");
+				mutex_unlock(&bma020_mutex);
 				return -EFAULT;
 			}
 
@@ -320,8 +332,10 @@ long bma020_ioctl(struct file *filp, unsigned int cmd,  unsigned long arg)
 			err = bma020_calibrate(*(bma020acc_t*)data, &temp);
 			//printk( "BMA020_CALIBRATION status: %d\n", err);
 		default:
-			return 0;
+			err = 0;
 	}
+	mutex_unlock(&bma020_mutex);
+	return err;
 }
 
 struct file_operations acc_fops =
