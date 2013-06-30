@@ -122,9 +122,7 @@ static unsigned int g_dvfslockval[DVFS_LOCK_TOKEN_NUM];
 #define ARM_VOLT_1_2_GHZ	1450000
 #define INT_VOLT_1_2_GHZ	1175000
 #define ARM_VOLT_1_0_GHZ	1350000
-#define INT_VOLT_1_0_GHZ	1175000
 #define ARM_VOLT_800_MHZ	1275000
-#define INT_VOLT_800_MHZ	1100000
 
 #else // CONFIG_MACH_ARIES
 
@@ -134,9 +132,7 @@ static unsigned int g_dvfslockval[DVFS_LOCK_TOKEN_NUM];
 #define ARM_VOLT_1_2_GHZ	1275000
 #define INT_VOLT_1_2_GHZ	1100000
 #define ARM_VOLT_1_0_GHZ	1275000
-#define INT_VOLT_1_0_GHZ	1100000
 #define ARM_VOLT_800_MHZ	1050000
-#define INT_VOLT_800_MHZ	1100000
 
 #endif
 
@@ -160,11 +156,11 @@ static struct s5pv210_dvs_conf dvs_conf[] = {
 	},
 	[L0] = { /* 1.0GHz */
 		.arm_volt   = ARM_VOLT_1_0_GHZ,
-		.int_volt   = INT_VOLT_1_0_GHZ,
+		.int_volt   = 1100000,
 	},
 	[L1] = { /* 800MHz */
 		.arm_volt   = ARM_VOLT_800_MHZ,
-		.int_volt   = INT_VOLT_800_MHZ,
+		.int_volt   = 1100000,
 	},
 	[L2] = { /* 400MHz */
 		.arm_volt   = 1050000,
