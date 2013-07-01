@@ -457,6 +457,10 @@ static struct regulator_consumer_supply ldo3_consumer[] = {
 	REGULATOR_SUPPLY("pd_io", "s3c-usbgadget")
 };
 
+static struct regulator_consumer_supply ldo4_consumer[] = {
+	{	.supply	= "v_adc", },
+};
+
 #ifndef CONFIG_SAMSUNG_FASCINATE
 static struct regulator_consumer_supply ldo5_consumer[] = {
 	REGULATOR_SUPPLY("vmmc", NULL),
@@ -508,6 +512,10 @@ static struct regulator_consumer_supply buck2_consumer[] = {
 	{	.supply	= "vddint", },
 };
 
+static struct regulator_consumer_supply buck3_consumer[] = {
+	{	.supply	= "vcc_ram", },
+};
+
 static struct regulator_consumer_supply buck4_consumer[] = {
 	{	.supply	= "cam_isp_core", },
 };
@@ -546,12 +554,18 @@ static struct regulator_init_data aries_ldo4_data = {
 		.min_uV		= 3300000,
 		.max_uV		= 3300000,
 		.apply_uV	= 1,
+		.boot_on    = 1,
 		.always_on	= 1,
-		.valid_ops_mask = REGULATOR_CHANGE_STATUS,
-		.state_mem	= {
+		.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE |
+				  REGULATOR_CHANGE_STATUS,
+		.state_mem      = {
+			.uV     = 3300000,
+			.mode   = REGULATOR_MODE_NORMAL,
 			.disabled = 1,
 		},
 	},
+        .num_consumer_supplies  = ARRAY_SIZE(ldo4_consumer),
+        .consumer_supplies      = ldo4_consumer,
 };
 
 #ifndef CONFIG_SAMSUNG_FASCINATE
@@ -760,8 +774,18 @@ static struct regulator_init_data aries_buck3_data = {
 		.min_uV		= 1800000,
 		.max_uV		= 1800000,
 		.apply_uV	= 1,
+		.boot_on    = 1,
 		.always_on	= 1,
+		.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE |
+		                  REGULATOR_CHANGE_STATUS,
+		.state_mem      = {
+            .uV     = 1800000,
+			.mode   = REGULATOR_MODE_NORMAL,
+			.disabled = 1,
+        },
 	},
+    .num_consumer_supplies  = ARRAY_SIZE(buck3_consumer),
+    .consumer_supplies      = buck3_consumer,
 };
 
 static struct regulator_init_data aries_buck4_data = {
