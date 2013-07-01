@@ -105,6 +105,24 @@ static unsigned int g_dvfslockval[DVFS_LOCK_TOKEN_NUM];
 const unsigned long arm_volt_max = 1500000;
 const unsigned long int_volt_max = 1250000;
 
+
+#ifdef CONFIG_MACH_P1
+
+#define ARM_VOLT_1_2_GHZ	1450000
+#define INT_VOLT_1_2_GHZ	1175000
+#define ARM_VOLT_1_0_GHZ	1350000
+#define ARM_VOLT_800_MHZ	1275000
+
+#else // CONFIG_MACH_ARIES
+
+#define ARM_VOLT_1_2_GHZ	1350000
+#define INT_VOLT_1_2_GHZ	1150000
+#define ARM_VOLT_1_0_GHZ	1275000
+#define ARM_VOLT_800_MHZ	1200000
+
+#endif
+
+
 static struct s5pv210_dvs_conf dvs_conf[] = {
 	[OC2] = { /* 1.4GHz */
 		.arm_volt   = 1485000,
@@ -115,15 +133,15 @@ static struct s5pv210_dvs_conf dvs_conf[] = {
 		.int_volt   = 1175000,
 	},
 	[OC0] = { /* 1.2GHz */
-		.arm_volt   = 1450000,
-		.int_volt   = 1175000,
+		.arm_volt   = ARM_VOLT_1_2_GHZ,
+		.int_volt   = INT_VOLT_1_2_GHZ,
 	},
 	[L0] = { /* 1.0GHz */
-		.arm_volt   = 1350000,
+		.arm_volt   = ARM_VOLT_1_0_GHZ,
 		.int_volt   = 1100000,
 	},
 	[L1] = { /* 800MHz */
-		.arm_volt   = 1275000,
+		.arm_volt   = ARM_VOLT_800_MHZ,
 		.int_volt   = 1100000,
 	},
 	[L2] = { /* 400MHz */
