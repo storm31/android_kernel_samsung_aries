@@ -124,7 +124,6 @@ static __devinit int max8998_charger_probe(struct platform_device *pdev)
 	struct max8998_dev *iodev = dev_get_drvdata(pdev->dev.parent);
 	struct max8998_platform_data *pdata = dev_get_platdata(iodev->dev);
 	struct max8998_chg_data *chg;
-	struct i2c_client *i2c = iodev->i2c;
 	int ret = 0;
 
 	pr_info("%s : MAX8998 Charger Driver Loading\n", __func__);
@@ -145,22 +144,22 @@ static __devinit int max8998_charger_probe(struct platform_device *pdev)
 		goto err_pdata;
 	}
 
-	ret = max8998_update_reg(i2c, MAX8998_REG_CHGR1, /* disable */
+	ret = max8998_update_reg(iodev->i2c, MAX8998_REG_CHGR1, /* disable */
 		(0x3 << MAX8998_SHIFT_RSTR), MAX8998_MASK_RSTR);
 	if (ret < 0)
 		goto err_kfree;
 
-	ret = max8998_update_reg(i2c, MAX8998_REG_CHGR2, /* 6 Hr */
+	ret = max8998_update_reg(iodev->i2c, MAX8998_REG_CHGR2, /* 6 Hr */
 		(0x2 << MAX8998_SHIFT_FT), MAX8998_MASK_FT);
 	if (ret < 0)
 		goto err_kfree;
 
-	ret = max8998_update_reg(i2c, MAX8998_REG_CHGR2, /* 4.2V */
+	ret = max8998_update_reg(iodev->i2c, MAX8998_REG_CHGR2, /* 4.2V */
 		(0x0 << MAX8998_SHIFT_BATTSL), MAX8998_MASK_BATTSL);
 	if (ret < 0)
 		goto err_kfree;
 
-	ret = max8998_update_reg(i2c, MAX8998_REG_CHGR2, /* 105c */
+	ret = max8998_update_reg(iodev->i2c, MAX8998_REG_CHGR2, /* 105c */
 		(0x0 << MAX8998_SHIFT_TMP), MAX8998_MASK_TMP);
 	if (ret < 0)
 		goto err_kfree;
