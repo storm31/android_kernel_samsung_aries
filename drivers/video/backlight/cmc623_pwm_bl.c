@@ -290,7 +290,7 @@ static void cmc623_pwm_gpio_init(void)
 //    s3c_gpio_setpull(GPIO_LCD_CABC_PWM_R05, S3C_GPIO_PULL_NONE);
 }
 
-#ifdef CONFIG_PM
+#if !(defined CONFIG_HAS_EARLYSUSPEND)
 static int cmc623_pwm_suspend(struct device *swi_dev)
 {
 	struct backlight_device *bd = dev_get_drvdata(swi_dev);
@@ -473,7 +473,7 @@ static struct platform_driver cmc623_pwm_driver = {
 	.driver		= {
 		.name	= "cmc623_pwm_bl",
 		.owner	= THIS_MODULE,
-#ifdef CONFIG_PM
+#if !(defined CONFIG_HAS_EARLYSUSPEND)
 		.pm		= &cmc623_pm_ops,
 #endif
 	},
