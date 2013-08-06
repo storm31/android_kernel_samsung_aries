@@ -692,16 +692,6 @@ static int s5k6aafx_set_preview_stop(struct v4l2_subdev *sd)
 	return err;
 }
 
-#if 0
-static int s5k6aafx_s_crystal_freq(struct v4l2_subdev *sd, u32 freq, u32 flags)
-{
-	int err = -EINVAL;
-
-	FUNC_ENTR();
-	return err;
-}
-#endif
-
 static int s5k6aafx_g_mbus_fmt(struct v4l2_subdev *sd, struct v4l2_mbus_framefmt *fmt)
 {
 	FUNC_ENTR();
@@ -718,39 +708,21 @@ static int s5k6aafx_enum_framesizes(struct v4l2_subdev *sd, \
 	/*
 	 * Return the actual output settings programmed to the camera
 	 */
-	if((state->pix.width == 480) && (state->pix.height == 640)) {
+	if((state->set_fmt.width == 480) && (state->set_fmt.height == 640)) {
 		fsize->discrete.width = 640;
 		fsize->discrete.height = 480;
 	}
-	else if ((state->pix.width == 960) && (state->pix.height == 1280)) {
+	else if ((state->set_fmt.width == 960) && (state->set_fmt.height == 1280)) {
 		fsize->discrete.width = 1280;
 		fsize->discrete.height = 960;
 	}
 	else {
-		fsize->discrete.width = state->pix.width;
-		fsize->discrete.height = state->pix.height;
+		fsize->discrete.width = state->set_fmt.width;
+		fsize->discrete.height = state->set_fmt.height;
 	}
-	printk("%s : width - %d , height - %d\n", __func__, fsize->discrete.width, fsize->discrete.height);
+	printk("%s : width(%d) height(%d)\n", __func__, fsize->discrete.width, fsize->discrete.height);
 
 	return 0;
-}
-
-static int s5k6aafx_enum_mbus_fmt(struct v4l2_subdev *sd, unsigned int index,
-				  enum v4l2_mbus_pixelcode *code)
-{
-	int err = 0;
-
-	FUNC_ENTR();
-	return err;
-}
-
-static int s5k6aafx_enum_frameintervals(struct v4l2_subdev *sd,
-					struct v4l2_frmivalenum *fival)
-{
-	int err = 0;
-
-	FUNC_ENTR();
-	return err;
 }
 
 static int s5k6aafx_try_mbus_fmt(struct v4l2_subdev *sd, struct v4l2_mbus_framefmt *fmt)
@@ -764,9 +736,19 @@ static int s5k6aafx_try_mbus_fmt(struct v4l2_subdev *sd, struct v4l2_mbus_framef
 
 static int s5k6aafx_s_mbus_fmt(struct v4l2_subdev *sd, struct v4l2_mbus_framefmt *fmt)
 {
-	struct s5k6aafx_state *state = to_state(sd);
+	struct s5k6aafx_state *state =
+		container_of(sd, struct s5k6aafx_state, sd);
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
 
 	FUNC_ENTR();
+
+	if (fmt->code == V4L2_MBUS_FMT_FIXED &&
+			fmt->colorspace != V4L2_COLORSPACE_JPEG) {
+		dev_dbg(&client->dev,
+				"%s: mismatch in pixelformat and colorspace\n",
+				__func__);
+		return -EINVAL;
+	}
 
 	/*
 	 * Just copying the requested format as of now.
@@ -775,10 +757,17 @@ static int s5k6aafx_s_mbus_fmt(struct v4l2_subdev *sd, struct v4l2_mbus_framefmt
 	 */
 	state->pix.width       = fmt->width;
 	state->pix.height      = fmt->height;
+	state->set_fmt.width   = fmt->width;
+	state->set_fmt.height  = fmt->height;
 	state->pix.colorspace  = fmt->colorspace;
-	state->pix.pixelformat = fmt->code;
 
-	printk("%s : width - %d , height - %d\n", __func__, state->pix.width, state->pix.height);
+	if (fmt->colorspace == V4L2_COLORSPACE_JPEG)
+		state->pix.pixelformat = V4L2_PIX_FMT_JPEG;
+	else
+		state->pix.pixelformat = 0; /* is this used anywhere? */
+
+	printk("%s : width(%d) height(%d)\n", __func__,
+		state->pix.width, state->pix.height);
 
 	return 0;
 }
@@ -893,21 +882,9 @@ static int s5k6aafx_init(struct v4l2_subdev *sd, u32 val)
 	//hmin84.park -10.07.06
 #endif
 
-	state->pix.width = DEFAULT_WIDTH;
-	state->pix.height = DEFAULT_HEIGHT;
+	state->set_fmt.width = DEFAULT_WIDTH;
+	state->set_fmt.height = DEFAULT_HEIGHT;
 
-	return 0;
-}
-
-static int s5k6aafx_queryctrl(struct v4l2_subdev *sd, struct v4l2_queryctrl *qc)
-{
-	FUNC_ENTR();
-	return 0;
-}
-
-static int s5k6aafx_querymenu(struct v4l2_subdev *sd, struct v4l2_querymenu *qm)
-{
-	FUNC_ENTR();
 	return 0;
 }
 
@@ -1543,7 +1520,6 @@ static int s5k6aafx_s_ctrl(struct v4l2_subdev *sd, struct v4l2_control *ctrl)
 
 		case V4L2_CID_CAMERA_FRAME_RATE:
 			err = s5k6aafx_set_frame_rate(sd, ctrl);
-			state->fps = ctrl->value;
 			break;
 
 		case V4L2_CID_CAMERA_APP_CHECK:
@@ -1581,20 +1557,15 @@ static int s5k6aafx_s_ctrl(struct v4l2_subdev *sd, struct v4l2_control *ctrl)
 
 static const struct v4l2_subdev_core_ops s5k6aafx_core_ops = {
 	.init = s5k6aafx_init,		/* initializing API */
-	.queryctrl = s5k6aafx_queryctrl,
-	.querymenu = s5k6aafx_querymenu,
 	.g_ctrl = s5k6aafx_g_ctrl,
 	.s_ctrl = s5k6aafx_s_ctrl,
 };
 
 static const struct v4l2_subdev_video_ops s5k6aafx_video_ops = {
-	/*.s_crystal_freq = s5k6aafx_s_crystal_freq,*/
 	.g_mbus_fmt = s5k6aafx_g_mbus_fmt,
 	.s_mbus_fmt = s5k6aafx_s_mbus_fmt,
 	.s_stream = s5k6aafx_s_stream,
 	.enum_framesizes = s5k6aafx_enum_framesizes,
-	.enum_frameintervals = s5k6aafx_enum_frameintervals,
-	.enum_mbus_fmt = s5k6aafx_enum_mbus_fmt,
 	.try_mbus_fmt = s5k6aafx_try_mbus_fmt,
 	.g_parm	= s5k6aafx_g_parm,
 	.s_parm	= s5k6aafx_s_parm,
