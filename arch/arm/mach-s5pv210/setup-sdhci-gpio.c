@@ -28,7 +28,6 @@
 #include <mach/gpio-p1.h>
 #endif
 
-
 #include "herring.h"
 
 #if defined (CONFIG_SAMSUNG_GALAXYS) || defined(CONFIG_SAMSUNG_FASCINATE)
@@ -107,11 +106,6 @@ void s5pv210_setup_sdhci2_cfg_gpio(struct platform_device *dev, int width)
 {
 	unsigned int gpio;
 
-#ifdef CONFIG_PHONE_P1_CDMA
-	unsigned int memory_enable;
-	memory_enable = S5PV210_GPJ1(1);
-#endif
-
 	switch (width) {
 	/* Channel 2 supports 4 and 8-bit bus width */
 	case 8:
@@ -141,9 +135,9 @@ void s5pv210_setup_sdhci2_cfg_gpio(struct platform_device *dev, int width)
 	}
 
 #if defined(CONFIG_PHONE_P1_CDMA)
-	s3c_gpio_cfgpin(memory_enable, S3C_GPIO_OUTPUT);
-	s3c_gpio_setpull(memory_enable, S3C_GPIO_PULL_NONE);
-	gpio_set_value(memory_enable, 1);
+	s3c_gpio_cfgpin(S5PV210_GPJ1(1), S3C_GPIO_OUTPUT);
+	s3c_gpio_setpull(S5PV210_GPJ1(1), S3C_GPIO_PULL_NONE);
+	gpio_set_value(S5PV210_GPJ1(1), 1);
 #endif
 
 }
