@@ -209,7 +209,7 @@ static void xmm_on(struct modemctl *mc)
 		gpio_direction_output(mc->gpio_reset_req_n, 0);
 #endif
 
-	msleep(100);
+	msleep(500);
 
 	//gpio_set_value(mc->gpio_cp_reset, 1);
 	if(mc->gpio_phone_on)
