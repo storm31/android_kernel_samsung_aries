@@ -18,8 +18,8 @@
 #include <linux/i2c-gpio.h>
 #include <linux/regulator/consumer.h>
 #include <linux/mfd/max8998.h>
-#include <linux/smb136_charger.h>
-#include <linux/sec_battery.h>
+#include <linux/power/smb136_charger.h>
+#include <linux/power/sec_battery.h>
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/usb/ch9.h>
@@ -31,6 +31,7 @@
 #include <linux/irq.h>
 #include <linux/skbuff.h>
 #include <linux/console.h>
+#include <linux/ion.h>
 
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
@@ -42,7 +43,6 @@
 #include <mach/gpio.h>
 #include <mach/gpio-p1.h>
 #include <mach/mach-p1.h>
-#include <mach/sec_switch.h>
 #include <mach/adc.h>
 #include <mach/param.h>
 #include <mach/system.h>
@@ -102,7 +102,7 @@
 #include <linux/i2c/l3g4200d.h>
 #include <../../../drivers/input/misc/bma020.h>
 #include <../../../drivers/video/samsung/s3cfb.h>
-#include <linux/max17042_battery.h>
+#include <linux/power/max17042_battery.h>
 #include <linux/switch.h>
 
 #if defined(CONFIG_KEYBOARD_GPIO)
@@ -163,15 +163,7 @@ struct sec_battery_callbacks *callbacks;
 struct max17042_callbacks *max17042_cb;
 static enum cable_type_t set_cable_status;
 static enum charging_status_type_t charging_status;
-static int fsa9480_init_flag = 0;
-static int sec_switch_status = 0;
-static int sec_switch_inited = 0;
-static bool fsa9480_jig_status = 0;
-static bool ap_vbus_disabled = 0;
-
-int sec_switch_set_regulator(int mode);
 void otg_phy_init(void);
-
 extern bool keyboard_enable;
 
 static int p1_notifier_call(struct notifier_block *this,
@@ -355,10 +347,10 @@ static struct s3cfb_lcd lvds = {
 	},
 };
 
-#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC0 (8192 * SZ_1K)
+#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC0 (12288 * SZ_1K)
 // Disabled to save memory (we can't find where it's used)
 //#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC1 (8192 * SZ_1K)
-#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC2 (8192 * SZ_1K)
+#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC2 (12288 * SZ_1K)
 #define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_MFC0 (14336 * SZ_1K)
 #define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_MFC1 (21504 * SZ_1K)
 #define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMD (S5PV210_LCD_WIDTH * \
@@ -367,11 +359,13 @@ static struct s3cfb_lcd lvds = {
 						 (CONFIG_FB_S3C_NUM_OVLY_WIN * \
 						  CONFIG_FB_S3C_NUM_BUF_OVLY_WIN)))
 // Was 8M, but we're only using it to encode VGA jpegs
-#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_JPEG (8192 * SZ_1K)
+#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_JPEG (4096 * SZ_1K)
 #define  S5PV210_ANDROID_PMEM_MEMSIZE_PMEM (8192 * SZ_1K)
 #define  S5PV210_ANDROID_PMEM_MEMSIZE_PMEM_GPU1 (4200 * SZ_1K)
 #define  S5PV210_ANDROID_PMEM_MEMSIZE_PMEM_ADSP (1500 * SZ_1K)
 #define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_TEXTSTREAM (4800 * SZ_1K)
+#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_ION (S5PV210_LCD_WIDTH * \
+						 S5PV210_LCD_HEIGHT * 4 * 3)
 
 static struct s5p_media_device p1_media_devs[] = {
 	[0] = {
@@ -425,7 +419,15 @@ static struct s5p_media_device p1_media_devs[] = {
 		.memsize = S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMD,
 		.paddr = 0,
 	},
-#ifdef CONFIG_ANDROID_PMEM
+#ifdef CONFIG_ION_S5P
+	[7] = {
+		.id = S5P_MDEV_ION,
+		.name = "ion",
+		.bank = 1,
+		.memsize = S5PV210_VIDEO_SAMSUNG_MEMSIZE_ION,
+		.paddr = 0,
+	},
+#elif defined(CONFIG_ANDROID_PMEM)
 	[7] = {
 		.id = S5P_MDEV_PMEM,
 		.name = "pmem",
@@ -462,7 +464,7 @@ static struct s5pv210_cpufreq_voltage smdkc110_cpufreq_volt[] = {
 	{
 		.freq	= 1200000,
 		.varm	= 1450000,
-		.vint	= 1200000,
+		.vint	= 1175000,
 	}, {
 		.freq	= 1000000,
 		.varm	= 1350000,
@@ -1027,17 +1029,11 @@ static int max17042_callbacks(int request_mode, int arg1, int arg2)
 
 }
 
-static bool sec_battery_get_jig_status(void)
-{
-	return fsa9480_jig_status;
-}
-
 static struct sec_battery_platform_data sec_battery_pdata = {
 	.register_callbacks = &sec_battery_register_callbacks,
 	.adc_table		= temper_table,
 	.adc_array_size	= ARRAY_SIZE(temper_table),
 	.fuelgauge_cb		= &max17042_callbacks,
-	.get_jig_status		= &sec_battery_get_jig_status,
 };
 
 struct platform_device sec_device_battery = {
@@ -2604,11 +2600,6 @@ static struct i2c_board_info i2c_devs4[] __initdata = {
 #endif
 };
 
-static struct platform_device bma020_accel = {
-       .name  = "bma020-accelerometer",
-       .id    = -1,
-};
-
 static struct l3g4200d_platform_data l3g4200d_p1p2_platform_data = {
 };
 
@@ -2659,8 +2650,6 @@ static void fsa9480_usb_cb(bool attached)
 
 	if (callbacks && callbacks->set_cable)
 		callbacks->set_cable(callbacks, set_cable_status);
-
-	if(!attached)	ap_vbus_disabled = 0;  // reset flag
 }
 
 static void fsa9480_charger_cb(bool attached)
@@ -2668,14 +2657,6 @@ static void fsa9480_charger_cb(bool attached)
 	set_cable_status = attached ? CABLE_TYPE_AC : CABLE_TYPE_NONE;
 	if (callbacks && callbacks->set_cable)
 		callbacks->set_cable(callbacks, set_cable_status);
-
-	if(!attached)	ap_vbus_disabled = 0;  // reset flag
-}
-
-static void fsa9480_jig_cb(bool attached)
-{
-	printk("%s : attached (%d)\n", __func__, (int)attached);
-	fsa9480_jig_status = attached;
 }
 
 static struct switch_dev switch_dock = {
@@ -2708,34 +2689,12 @@ static void fsa9480_reset_cb(void)
 		pr_err("Failed to register dock switch. %d\n", ret);
 }
 
-static void fsa9480_set_init_flag(void)
-{
-	fsa9480_init_flag = 1;
-}
-
-static void fsa9480_usb_switch(void)
-{
-	// check if sec_switch init finished.
-	if(!sec_switch_inited)
-		return;
-
-	if(sec_switch_status & (int)(USB_SEL_MASK)) {
-		sec_switch_set_regulator(AP_VBUS_ON);
-	}
-	else {
-		sec_switch_set_regulator(CP_VBUS_ON);
-	}
-}
-
 static struct fsa9480_platform_data fsa9480_pdata = {
 	.usb_cb = fsa9480_usb_cb,
 	.charger_cb = fsa9480_charger_cb,
-	.jig_cb = fsa9480_jig_cb,
 	.deskdock_cb = fsa9480_deskdock_cb,
 	.cardock_cb = fsa9480_cardock_cb,
 	.reset_cb = fsa9480_reset_cb,
-	.set_init_flag = fsa9480_set_init_flag,
-	.set_usb_switch = fsa9480_usb_switch,
 };
 
 static struct i2c_board_info i2c_devs7[] __initdata = {
@@ -2958,118 +2917,6 @@ static void __init android_pmem_set_platdata(void)
 }
 #endif
 
-
-static struct regulator *reg_safeout1;
-static struct regulator *reg_safeout2;
-
-int sec_switch_get_regulator(void)
-{
-	printk("%s\n", __func__);
-
-	// get regulators.
-	if (IS_ERR_OR_NULL(reg_safeout1)) {
-		reg_safeout1 = regulator_get(NULL, "vbus_ap");
-		if (IS_ERR_OR_NULL(reg_safeout1)) {
-			   pr_err("failed to get safeout1 regulator");
-			   return -1;
-		}
-	}
-
-	if (IS_ERR_OR_NULL(reg_safeout2)) {
-		reg_safeout2 = regulator_get(NULL, "vbus_cp");
-		if (IS_ERR_OR_NULL(reg_safeout2)) {
-			   pr_err("failed to get safeout2 regulator");
-			   return -1;
-		}
-	}
-
-//	printk("reg_safeout1 = %p\n", reg_safeout1);
-//	printk("reg_safeout2 = %p\n", reg_safeout2);
-
-	return 0;
-}
-
-int sec_switch_set_regulator(int mode)
-{
-	struct usb_gadget *gadget = platform_get_drvdata(&s3c_device_usbgadget);
-
-	printk("%s (mode : %d)\n", __func__, mode);
-
-	if (IS_ERR_OR_NULL(reg_safeout1) ||
-		IS_ERR_OR_NULL(reg_safeout2)) {
-		pr_err("safeout regulators not initialized yet!!\n");
-		return -EINVAL;
-	}
-
-	// note : safeout1/safeout2 register setting is not matched regulator's use_count.
-	//            so, set/reset use_count is needed to control safeout regulator correctly...
-	if(mode == CP_VBUS_ON) {
-		if(!regulator_is_enabled(reg_safeout2)) {
-			regulator_set_use_count(reg_safeout2, 0);
-			regulator_enable(reg_safeout2);
-		}
-
-		if(regulator_is_enabled(reg_safeout1)) {
-			regulator_set_use_count(reg_safeout1, 1);
-			regulator_disable(reg_safeout1);
-		}
-	}
-	else if(mode == AP_VBUS_ON) {
-		/* if(!regulator_is_enabled(reg_safeout1)) */ {
-			regulator_set_use_count(reg_safeout1, 0);
-			regulator_enable(reg_safeout1);
-		}
-
-		if(regulator_is_enabled(reg_safeout2)) {
-			regulator_set_use_count(reg_safeout2, 1);
-			regulator_disable(reg_safeout2);
-		}
-	}
-	else {  // AP_VBUS_OFF
-		printk("%s : AP VBUS OFF\n", __func__);
-
-		gadget->speed = USB_SPEED_UNKNOWN;
-		usb_gadget_vbus_disconnect(gadget);
-		ap_vbus_disabled = 1;  // set flag
-	}
-	return 0;
-}
-
-int sec_switch_get_cable_status(void)
-{
-	return (ap_vbus_disabled ? CABLE_TYPE_NONE : set_cable_status);
-}
-
-int sec_switch_get_phy_init_status(void)
-{
-	return fsa9480_init_flag;
-}
-
-void sec_switch_set_switch_status(int val)
-{
-	printk("%s (switch_status : %d)\n", __func__, val);
-	if(!sec_switch_inited)
-		sec_switch_inited = 1;
-
-	sec_switch_status = val;
-}
-
-static struct sec_switch_platform_data sec_switch_pdata = {
-	.get_regulator = sec_switch_get_regulator,
-	.set_regulator = sec_switch_set_regulator,
-	.get_cable_status = sec_switch_get_cable_status,
-	.get_phy_init_status = sec_switch_get_phy_init_status,
-	.set_switch_status = sec_switch_set_switch_status,
-};
-
-struct platform_device sec_device_switch = {
-	.name	= "sec_switch",
-	.id	= 1,
-	.dev	= {
-		.platform_data	= &sec_switch_pdata,
-	}
-};
-
 static struct platform_device sec_device_rfkill = {
 	.name	= "bt_rfkill",
 	.id	= -1,
@@ -3082,12 +2929,12 @@ static struct platform_device sec_device_btsleep = {
 
 #ifdef CONFIG_SEC_HEADSET
 static struct sec_jack_port sec_jack_port_info[] = {
-		{
+	{
 		{ // HEADSET detect info
-			.eint		=IRQ_EINT8,
+			.eint		= IRQ_EINT8,
 			.gpio		= GPIO_DET_35,
 			.gpio_af	= GPIO_DET_35_AF ,
-			.low_active 	= 1
+			.low_active = 1
 		},
 		{ // SEND/END info
 			.eint		= IRQ_EINT12,
@@ -3095,7 +2942,7 @@ static struct sec_jack_port sec_jack_port_info[] = {
 			.gpio_af	= GPIO_EAR_SEND_END_AF,
 			.low_active = 1
 		}
-		}
+	}
 };
 
 static struct sec_jack_platform_data sec_jack_pdata = {
@@ -6667,23 +6514,16 @@ void s3c_config_sleep_gpio(void)
 		}
 	}
 
-
-	if(HWREV < 0x4) { // NC
-		s3c_gpio_cfgpin(GPIO_GPH10, S3C_GPIO_OUTPUT);
-		s3c_gpio_setpull(GPIO_GPH10, S3C_GPIO_PULL_NONE);
-		s3c_gpio_setpin(GPIO_GPH10, 0);
-	}
-
+	s3c_gpio_cfgpin(GPIO_GPH10, S3C_GPIO_OUTPUT);
+	s3c_gpio_setpull(GPIO_GPH10, S3C_GPIO_PULL_NONE);
+	s3c_gpio_setpin(GPIO_GPH10, 0);
 
 	s3c_gpio_cfgpin(GPIO_MHL_INT, S3C_GPIO_INPUT);
 	s3c_gpio_setpull(GPIO_MHL_INT, S3C_GPIO_PULL_DOWN);
 
-
-	if(HWREV < 0x4) { // NC
-		s3c_gpio_cfgpin(GPIO_GPH14, S3C_GPIO_OUTPUT);
-		s3c_gpio_setpull(GPIO_GPH14, S3C_GPIO_PULL_NONE);
-		s3c_gpio_setpin(GPIO_GPH14, 0);
-	}
+	s3c_gpio_cfgpin(GPIO_GPH14, S3C_GPIO_OUTPUT);
+	s3c_gpio_setpull(GPIO_GPH14, S3C_GPIO_PULL_NONE);
+	s3c_gpio_setpin(GPIO_GPH14, 0);
 
 	s3c_gpio_cfgpin(GPIO_HDMI_HPD, S3C_GPIO_INPUT);
 	s3c_gpio_setpull(GPIO_HDMI_HPD, S3C_GPIO_PULL_DOWN);
@@ -6745,18 +6585,13 @@ void s3c_config_sleep_gpio(void)
 	s3c_gpio_setpull(GPIO_MSENSE_IRQ, S3C_GPIO_PULL_UP);
 #endif
 
-	if(HWREV < 0x6) { // NC
-		s3c_gpio_cfgpin(GPIO_GPH33, S3C_GPIO_OUTPUT);
-		s3c_gpio_setpull(GPIO_GPH33, S3C_GPIO_PULL_NONE);
-		s3c_gpio_setpin(GPIO_GPH33, 0);
-	}
+	s3c_gpio_cfgpin(GPIO_GPH33, S3C_GPIO_OUTPUT);
+	s3c_gpio_setpull(GPIO_GPH33, S3C_GPIO_PULL_NONE);
+	s3c_gpio_setpin(GPIO_GPH33, 0);
 
-
-	if(HWREV < 11) { // NC
-		s3c_gpio_cfgpin(GPIO_GPH35, S3C_GPIO_OUTPUT);
-		s3c_gpio_setpull(GPIO_GPH35, S3C_GPIO_PULL_NONE);
-		s3c_gpio_setpin(GPIO_GPH35, 0);
-	}
+	s3c_gpio_cfgpin(GPIO_GPH35, S3C_GPIO_OUTPUT);
+	s3c_gpio_setpull(GPIO_GPH35, S3C_GPIO_PULL_NONE);
+	s3c_gpio_setpin(GPIO_GPH35, 0);
 
 	if(HWREV >= 0x4) {  // NC
 		s3c_gpio_cfgpin(GPIO_GPH36, S3C_GPIO_INPUT);
@@ -7102,6 +6937,40 @@ static struct platform_device p1_keyboard = {
         .id    = -1,
 };
 
+#ifdef CONFIG_ION_S5P
+
+static struct ion_platform_data ion_s5p_data = {
+	.nr = 2,
+	.heaps = {
+		{
+			.type = ION_HEAP_TYPE_SYSTEM,
+			.id = ION_HEAP_TYPE_SYSTEM,
+			.name = "system",
+		},
+		{
+			.type = ION_HEAP_TYPE_CARVEOUT,
+			.id = ION_HEAP_TYPE_CARVEOUT,
+			.name = "carveout",
+		},
+	},
+};
+
+static struct platform_device ion_s5p_device = {
+	.name = "ion-s5p",
+	.id = -1,
+	.dev = {
+		.platform_data = &ion_s5p_data,
+	},
+};
+
+static void ion_s5p_set_platdata(void)
+{
+	ion_s5p_data.heaps[1].base = s5p_get_media_memory_bank(S5P_MDEV_ION, 1);
+	ion_s5p_data.heaps[1].size = s5p_get_media_memsize_bank(S5P_MDEV_ION, 1);
+}
+
+#endif /* CONFIG_ION_S5P */
+
 static struct platform_device *p1_devices[] __initdata = {
 	&watchdog_device,
 #ifdef CONFIG_FIQ_DEBUGGER
@@ -7162,8 +7031,12 @@ static struct platform_device *p1_devices[] __initdata = {
 #if defined (CONFIG_VIDEO_NM6XX)
 	&p1_s3c_device_i2c15, /* nmi625  */
 #endif
-	&sec_device_switch,  // samsung switch driver
-
+#if defined CONFIG_USB_S3C_OTG_HOST
+	&s3c_device_usb_otghcd,
+#endif
+#if defined CONFIG_USB_DWC_OTG
+	&s3c_device_usb_dwcotg,
+#endif
 #ifdef CONFIG_USB_GADGET
 	&s3c_device_usbgadget,
 #endif
@@ -7243,6 +7116,10 @@ static struct platform_device *p1_devices[] __initdata = {
 	&sec_device_dpram,
 #endif
 	&samsung_asoc_dma,
+
+#ifdef CONFIG_ION_S5P
+	&ion_s5p_device,
+#endif
 };
 
 unsigned int HWREV;
@@ -7492,6 +7369,10 @@ static void __init p1_machine_init(void)
 	android_pmem_set_platdata();
 #endif
 
+#ifdef CONFIG_ION_S5P
+	ion_s5p_set_platdata();
+#endif
+
 	gpio_request(GPIO_TOUCH_EN, "touch en");
 
 	/* i2c */
@@ -7515,9 +7396,8 @@ static void __init p1_machine_init(void)
 		i2c_devs5[ARRAY_SIZE(i2c_devs5)-1].addr += 1;						// From HW rev 0.9, slave addres is changed from 0x68 to 0x69
 		i2c_register_board_info(5, i2c_devs5, ARRAY_SIZE(i2c_devs5));
 	}
-	/* magnetic and light sensor */
-	i2c_register_board_info(10, i2c_devs10, ARRAY_SIZE(i2c_devs10));
 
+	/* max8998 */
 	i2c_register_board_info(6, i2c_devs6, ARRAY_SIZE(i2c_devs6));
 	/* FSA9480 */
 	fsa9480_gpio_init();
@@ -7526,6 +7406,9 @@ static void __init p1_machine_init(void)
 	/* max17042 */
 	max17042_gpio_init();
 	i2c_register_board_info(9, i2c_devs9, ARRAY_SIZE(i2c_devs9));
+
+	/* magnetic and light sensor */
+	i2c_register_board_info(10, i2c_devs10, ARRAY_SIZE(i2c_devs10));
 
 	/* smb136 */
 	smb136_gpio_init();
@@ -7642,18 +7525,17 @@ void otg_phy_init(void)
 			S3C_USBOTG_PHYCLK);
 	writel((readl(S3C_USBOTG_RSTCON) & ~(0x3<<1)) | (0x1<<0),
 			S3C_USBOTG_RSTCON);
-	msleep(1);
+	mdelay(1);
 	writel(readl(S3C_USBOTG_RSTCON) & ~(0x7<<0),
 			S3C_USBOTG_RSTCON);
-	msleep(1);
+	mdelay(1);
 
 	/* rising/falling time */
 	writel(readl(S3C_USBOTG_PHYTUNE) | (0x1<<20),
 			S3C_USBOTG_PHYTUNE);
 
-	/* set DC level as 6 (6%) */
-	writel((readl(S3C_USBOTG_PHYTUNE) & ~(0xf)) | (0x1<<2) | (0x1<<1),
-			S3C_USBOTG_PHYTUNE);
+	/* set DC level as 0xf (24%) */
+	writel(readl(S3C_USBOTG_PHYTUNE) | 0xf, S3C_USBOTG_PHYTUNE);
 }
 EXPORT_SYMBOL(otg_phy_init);
 
@@ -7702,6 +7584,47 @@ void usb_host_phy_off(void)
 			S5P_USB_PHY_CONTROL);
 }
 EXPORT_SYMBOL(usb_host_phy_off);
+#endif
+
+#if defined CONFIG_USB_S3C_OTG_HOST || defined CONFIG_USB_DWC_OTG
+
+/* Initializes OTG Phy */
+void otg_host_phy_init(void)
+{
+	__raw_writel(__raw_readl(S5P_USB_PHY_CONTROL)
+		|(0x1<<0), S5P_USB_PHY_CONTROL); /*USB PHY0 Enable */
+	// from galaxy tab otg host:
+	__raw_writel((__raw_readl(S3C_USBOTG_PHYPWR)
+		&~(0x3<<3)&~(0x1<<0))|(0x1<<5), S3C_USBOTG_PHYPWR);
+	// from galaxy s2 otg host:
+	//     __raw_writel((__raw_readl(S3C_USBOTG_PHYPWR)
+	//           &~(0x7<<3)&~(0x1<<0)), S3C_USBOTG_PHYPWR);
+	__raw_writel((__raw_readl(S3C_USBOTG_PHYCLK)
+		&~(0x1<<4))|(0x7<<0), S3C_USBOTG_PHYCLK);
+
+	__raw_writel((__raw_readl(S3C_USBOTG_RSTCON)
+		&~(0x3<<1))|(0x1<<0), S3C_USBOTG_RSTCON);
+
+	mdelay(1);
+
+	__raw_writel((__raw_readl(S3C_USBOTG_RSTCON)
+		&~(0x7<<0)), S3C_USBOTG_RSTCON);
+
+	mdelay(1);
+
+	__raw_writel((__raw_readl(S3C_UDC_OTG_GUSBCFG)
+		|(0x3<<8)), S3C_UDC_OTG_GUSBCFG);
+
+	//smb136_set_otg_mode(1);
+
+	printk("otg_host_phy_int : USBPHYCTL=0x%x,PHYPWR=0x%x,PHYCLK=0x%x,USBCFG=0x%x\n",
+		readl(S5P_USB_PHY_CONTROL),
+		readl(S3C_USBOTG_PHYPWR),
+		readl(S3C_USBOTG_PHYCLK),
+		readl(S3C_UDC_OTG_GUSBCFG)
+	);
+}
+EXPORT_SYMBOL(otg_host_phy_init);
 #endif
 
 #if defined(CONFIG_SAMSUNG_P1)
