@@ -34,8 +34,6 @@
 #define SAMSUNG_LPM_MODE
 //#define __FUEL_GAUGES_IC__
 
-#define BATTERY_CURRENT
-
 enum cable_type_t {
 	CABLE_TYPE_NONE = 0,
 	CABLE_TYPE_USB,
@@ -122,10 +120,6 @@ enum {
 	BATT_TEMP_CHECK,
 	BATT_FULL_CHECK,
 #endif
-#ifdef BATTERY_CURRENT
-	BATT_CURRENT,
-#endif
-	DISABLE_CHARGER,
 };
 
 
