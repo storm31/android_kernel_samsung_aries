@@ -89,6 +89,10 @@ if $BOOTSTRAP ; then
 	sed -i s/mmcblk0p1/"$CACHE"/ /etc/recovery.fstab
 	sed -i s/mmcblk0p2/"$DATA"/ /etc/recovery.fstab
 	sed -i s/mmcblk1p1/"$SDCARD"/ /etc/recovery.fstab
+
+	sed -i s/mmcblk0p1/"$CACHE"/ /etc/twrp.fstab
+	sed -i s/mmcblk0p2/"$DATA"/ /etc/twrp.fstab
+	sed -i s/mmcblk1p1/"$SDCARD"/ /etc/twrp.fstab
 fi
 
 umount /sys
