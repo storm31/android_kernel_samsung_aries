@@ -41,6 +41,7 @@
 #ifdef CONFIG_MACH_P1
 #include <mach/gpio.h>
 #include <mach/gpio-p1.h>
+#include "logo_rgb24_wvga_portrait_p1.h"
 #else //CONFIG_MACH_ARIES
 #include "logo_rgb24_wvga_portrait.h"
 #endif
@@ -57,10 +58,7 @@
 #endif
 
 #if defined(CONFIG_MACH_P1)
-//#define DISPLAY_BOOT_PROGRESS
-#define LOGO_MEM_SIZE       		1024*600*4
-#define LOGO_MEM_BASE		        0x4EC00000 
-
+#define DISPLAY_BOOT_PROGRESS
 
 static int show_progress = 1;
 extern unsigned int HWREV;
@@ -145,15 +143,10 @@ static int s3cfb_draw_logo(struct fb_info *fb)
 		}
 	}
 #endif
-
-#if defined(CONFIG_MACH_P1)
-     memcpy(fb->screen_base, phys_to_virt(LOGO_MEM_BASE), LOGO_MEM_SIZE);
-#else // CONFIG_MACH_ARIES
 	if (readl(S5P_INFORM5)) //LPM_CHARGING mode
 		memcpy(fb->screen_base, charging, fb->var.yres * fb->fix.line_length);
 	else
 		memcpy(fb->screen_base, LOGO_RGB24, fb->var.yres * fb->fix.line_length);
-#endif
 	return 0;
 }
 #endif
