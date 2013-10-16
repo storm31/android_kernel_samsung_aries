@@ -1,4 +1,4 @@
-/****************************************************************************
+/**************************************************************************** 
  *  (C) Copyright 2008 Samsung Electronics Co., Ltd., All rights reserved
  *
  *  [File Name]   : Isr.c
@@ -6,7 +6,7 @@
  *  [Author]      : Jang Kyu Hyeok { kyuhyeok.jang@samsung.com }
  *  [Department]  : System LSI Division/Embedded S/W Platform
  *  [Created Date]: 2009/02/10
- *  [Revision History]
+ *  [Revision History] 	   
  *	  (1) 2008/06/13   by Jang Kyu Hyeok { kyuhyeok.jang@samsung.com }
  *          - Created this file and implements functions of ISR
  *
@@ -31,94 +31,115 @@
 
 /**
  * void otg_handle_interrupt(void)
- *
+ * 
  * @brief Main interrupt processing routine
- *
+ * 
  * @param None
- *
+ * 
  * @return None
  *
- * @remark
- *
+ * @remark 
+ * 
  */
 
-__inline__ void otg_handle_interrupt(struct usb_hcd *hcd)
+extern port_flags_t 	port_flag;
+extern bool 		ch_halt;
+
+__inline__ void otg_handle_interrupt(void)
 {
-	gintsts_t clearIntr = {.d32 = 0};
-	gintsts_t gintsts = {.d32 = 0};
-	struct sec_otghost *otghost = hcd_to_sec_otghost(hcd);
+	gintsts_t	clearIntr = {.d32 = 0};
+	gintsts_t	gintsts = {.d32 = 0};
 
 	gintsts.d32 = read_reg_32(GINTSTS) & read_reg_32(GINTMSK);
-
-	otg_dbg(OTG_DBG_ISR, "otg_handle_interrupt - GINTSTS=0x%8x\n",
-		      				 	gintsts.d32);
-
-	if (gintsts.b.wkupintr) {
-		otg_dbg(true, "Wakeup Interrupt\n");
+	/*
+	otg_dbg(OTG_DBG_ISR, 
+		"otg_handle_interrupt - GINTSTS=0x%8x\n",
+		gintsts.d32);
+	*/
+	if (gintsts.b.wkupintr)
+	{
+		otg_dbg(OTG_DBG_ISR, 
+			"Wakeup Interrupt\n");
 		clearIntr.b.wkupintr = 1;
 	}
 
-	if (gintsts.b.disconnect) {
-		otg_dbg(true, "Disconnect  Interrupt\n");
-		otghost->port_flag.b.port_connect_status_change = 1;
-		otghost->port_flag.b.port_connect_status = 0;
+	if (gintsts.b.disconnect)
+	{
+	        unsigned hprt = read_reg_32(HPRT);
+
+		otg_dbg(OTG_DBG_ISR, 
+			"Disconnect Interrupt (HPRT=0x%x)\n", hprt);
+		port_flag.b.port_connect_status_change = 1;
+		port_flag.b.port_connect_status = 0;
 		clearIntr.b.disconnect = 1;
-		/*
-		wake_unlock(&otghost->wake_lock);
-		*/
 	}
 
-	if (gintsts.b.conidstschng) {
-		otg_dbg(OTG_DBG_ISR, "Connect ID Status Change Interrupt\n");
+	if (gintsts.b.conidstschng)
+	{
+		otg_dbg(OTG_DBG_ISR, 
+			"Connect ID Status Change Interrupt\n");
 		clearIntr.b.conidstschng = 1;
-		oci_init_mode(otghost);
+		oci_init_mode();
 	}
 
-	if (gintsts.b.hcintr) {
-		/* Mask Channel Interrupt to prevent generating interrupt */
-		otg_dbg(OTG_DBG_ISR, "Channel Interrupt\n");
-		if(!otghost->ch_halt) {
-			do_transfer_checker(otghost);
+	if (gintsts.b.hcintr)
+	{
+		//Mask Channel Interrupt to prevent generating interrupt
+		/* otg_dbg(OTG_DBG_ISR, 
+		   "Channel Interrupt\n"); */
+		if(!ch_halt)
+		{
+			do_transfer_checker();
 		}
+		// else printk("Ignoring hcintr because we are halting\n");
 	}
 
-	if (gintsts.b.portintr) {
-		/* Read Only */
-		otg_dbg(true, "Port Interrupt\n");
-		process_port_intr(hcd);
+	if (gintsts.b.portintr)
+	{
+		// Read Only
+		otg_dbg(OTG_DBG_ISR, 
+			"Port Interrupt\n");
+		process_port_intr();
 	}
 
 
-	if (gintsts.b.otgintr) {
-		/* Read Only */
-		otg_dbg(OTG_DBG_ISR, "OTG Interrupt\n");
+	if (gintsts.b.otgintr)
+	{
+		// Read Only
+		otg_dbg(OTG_DBG_ISR, 
+			"OTG Interrupt\n");
 	}
 
-	if (gintsts.b.sofintr) {
-		/* otg_dbg(OTG_DBG_ISR, "SOF Interrupt\n"); */
-		do_schedule(otghost);
+	if (gintsts.b.sofintr)
+	{
+		//otg_dbg(OTG_DBG_ISR, 
+		//	"SOF Interrupt\n");
+		do_schedule();
 		clearIntr.b.sofintr = 1;
 	}
 
-	if (gintsts.b.modemismatch) {
-		otg_dbg(OTG_DBG_ISR, "Mode Mismatch Interrupt\n");
+	if (gintsts.b.modemismatch)
+	{
+		otg_dbg(OTG_DBG_ISR, 
+			"Mode Mismatch Interrupt\n");
 		clearIntr.b.modemismatch = 1;
 	}
 	update_reg_32(GINTSTS, clearIntr.d32);
+	
 }
 
 /**
  * void mask_channel_interrupt(u32 ch_num, u32 mask_info)
- *
+ * 
  * @brief Mask specific channel interrupt
- *
+ * 
  * @param [IN] chnum : channel number for masking
  *	   [IN] mask_info : mask information to write register
- *
+ * 
  * @return None
  *
- * @remark
- *
+ * @remark 
+ * 
  */
 void mask_channel_interrupt(u32 ch_num, u32 mask_info)
 {
@@ -127,16 +148,16 @@ void mask_channel_interrupt(u32 ch_num, u32 mask_info)
 
 /**
  * void unmask_channel_interrupt(u32 ch_num, u32 mask_info)
- *
+ * 
  * @brief Unmask specific channel interrupt
- *
+ * 
  * @param [IN] chnum : channel number for unmasking
  *	   [IN] mask_info : mask information to write register
- *
+ * 
  * @return None
  *
- * @remark
- *
+ * @remark 
+ * 
  */
 void unmask_channel_interrupt(u32	ch_num, u32 mask_info)
 {
@@ -145,20 +166,21 @@ void unmask_channel_interrupt(u32	ch_num, u32 mask_info)
 
 /**
  * int get_ch_info(hc_info_t * hc_reg, u8 ch_num)
- *
- * @brief Get current channel information about specific channel
- *
+ * 
+ * @brief Get current channel information about specific channel 
+ * 
  * @param [OUT] hc_reg : structure to write channel inforamtion value
  *	   [IN] ch_num : channel number for unmasking
- *
+ * 
  * @return None
  *
- * @remark
- *
+ * @remark 
+ * 
  */
 int get_ch_info(hc_info_t *hc_reg, u8 ch_num)
 {
-	if(hc_reg !=NULL) {
+	if(hc_reg !=NULL)
+	{
 		hc_reg->hc_int_msk.d32 	= read_reg_32(HCINTMSK(ch_num));
 		hc_reg->hc_int.d32 	= read_reg_32(HCINT(ch_num));
 		hc_reg->dma_addr 	= read_reg_32(HCDMA(ch_num));
@@ -172,16 +194,16 @@ int get_ch_info(hc_info_t *hc_reg, u8 ch_num)
 
 /**
  * void get_intr_ch(u32* haint, u32* haintmsk)
- *
+ * 
  * @brief Get Channel Interrupt Information in HAINT, HAINTMSK register
- *
+ * 
  * @param [OUT] haint : HAINT register value
  *	   [OUT] haintmsk : HAINTMSK register value
- *
+ * 
  * @return None
  *
- * @remark
- *
+ * @remark 
+ * 
  */
 void get_intr_ch(u32 *haint, u32 *haintmsk)
 {
@@ -189,18 +211,19 @@ void get_intr_ch(u32 *haint, u32 *haintmsk)
 	*haintmsk = read_reg_32(HAINTMSK);
 }
 
+
 /**
  * void clear_ch_intr(u8 ch_num, u32 clear_bit)
- *
+ * 
  * @brief Get Channel Interrupt Information in HAINT, HAINTMSK register
- *
+ * 
  * @param [IN] haint : HAINT register value
  *	   [IN] haintmsk : HAINTMSK register value
- *
+ * 
  * @return None
  *
- * @remark
- *
+ * @remark 
+ * 
  */
 void clear_ch_intr(u8 ch_num, u32 clear_bit)
 {
@@ -209,15 +232,15 @@ void clear_ch_intr(u8 ch_num, u32 clear_bit)
 
 /**
  * void enable_sof(void)
- *
+ * 
  * @brief Generate SOF Interrupt.
- *
+ * 
  * @param None
- *
+ * 
  * @return None
  *
- * @remark
- *
+ * @remark 
+ * 
  */
 void enable_sof(void)
 {
@@ -228,17 +251,17 @@ void enable_sof(void)
 
 /**
  *  void disable_sof(void)
- *
+ * 
  * @brief Stop to generage SOF interrupt
- *
+ * 
  * @param None
- *
+ * 
  * @return None
  *
- * @remark
- *
+ * @remark 
+ * 
  */
-void disable_sof(void)
+ void disable_sof(void)
 {
 	gintmsk_t gintmsk = {.d32 = 0};
 	gintmsk.b.sofintr = 1;
@@ -246,49 +269,62 @@ void disable_sof(void)
 }
 
 /*Internal function of isr */
-void process_port_intr(struct usb_hcd *hcd)
+void process_port_intr(void)
 {
-	hprt_t	hprt; /* by ss1, clear_hprt; */
-	struct sec_otghost *otghost = hcd_to_sec_otghost(hcd);
-
+	hprt_t	hprt;//by ss1, clear_hprt;
 	hprt.d32 = read_reg_32(HPRT);
 
-	otg_dbg(OTG_DBG_ISR, "Port Interrupt() : HPRT = 0x%x\n",hprt.d32);
+	otg_dbg(OTG_DBG_ISR, 
+		"Port Interrupt() : HPRT = 0x%x\n",hprt.d32);
 
-	if(hprt.b.prtconndet) {
-		otg_dbg(true, "detect connection");
+	if(hprt.b.prtconndet)
+	{
+		otg_dbg(OTG_DBG_ISR, 
+			"detect connection");
 
-		otghost->port_flag.b.port_connect_status_change = 1;
+		port_flag.b.port_connect_status_change = 1;
 
 		if(hprt.b.prtconnsts)
-			otghost->port_flag.b.port_connect_status = 1;
-
-		/* wake_lock(&otghost->wake_lock); */
+			port_flag.b.port_connect_status = 1;
 	}
 
+		
+	if(hprt.b.prtenchng)
+	{
+		otg_dbg(OTG_DBG_ISR, 
+			"port enable/disable changed (and implicit disconnect)\n");
 
-	if(hprt.b.prtenchng) {
-		otg_dbg(true, "port enable/disable changed\n");
-		otghost->port_flag.b.port_enable_change = 1;
-	}
+		port_flag.b.port_enable_change = 1;
 
-	if(hprt.b.prtovrcurrchng) {
-		otg_dbg(true, "over current condition is changed\n");
-		if(hprt.b.prtovrcurract) {
-			otg_dbg(true, "port_over_current_change = 1\n");
-			otghost->port_flag.b.port_over_current_change = 1;
+		// kevinh - it seems the hw implicitly disables the interface on unplug, so mark that we are unplugged
+		if(!hprt.b.prtconnsts) {
+		  port_flag.b.port_connect_status_change = 1;
+		  port_flag.b.port_connect_status = 0;
 		}
-		else {
-			otghost->port_flag.b.port_over_current_change = 0;
-		}
-		/* defer otg power control into a kernel thread */
-		queue_work(otghost->wq, &otghost->work);
 	}
 
-	hprt.b.prtena = 0; /* prtena를 writeclear시키면 안됨. */
-	/* hprt.b.prtpwr = 0; */
+	if(hprt.b.prtovrcurrchng)
+	{
+		if(hprt.b.prtovrcurract)
+			{
+			otg_dbg(OTG_DBG_ISR, 
+				"port_over_current = 1\n");
+			port_flag.b.port_over_current_change = 1;
+			}
+		else
+			{
+			otg_dbg(OTG_DBG_ISR, 
+				"port_over_current = 0\n");
+		
+			port_flag.b.port_over_current_change = 0;
+			}
+	}	
+
+	hprt.b.prtena = 0; //prtena를 writeclear시키면 안됨.
+	//hprt.b.prtpwr = 0;
 	hprt.b.prtrst = 0;
 	hprt.b.prtconnsts = 0;
 
 	write_reg_32(HPRT, hprt.d32);
+
 }
