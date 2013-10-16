@@ -15,17 +15,7 @@
 #include <linux/cpufreq.h>
 
 enum perf_level {
-#ifdef CONFIG_MACH_P1
-	OC2, //1.4GHz
-	OC1, //1.3GHz
-#endif
-	OC0, //1.2GHz
-	L0,  //1GHz
-	L1,  //800MHz
-	L2,  //400MHz
-	L3,  //200MHz
-	L4,  //100MHz
-	MAX_PERF_LEVEL = L4,
+	OC0, L0, L1, L2, L3, L4, MAX_PERF_LEVEL = L4,
 };
 
 /* For cpu-freq driver */
