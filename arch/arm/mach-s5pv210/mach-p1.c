@@ -434,7 +434,7 @@ static struct s5p_media_device p1_media_devs[] = {
 		.memsize = S5PV210_VIDEO_SAMSUNG_MEMSIZE_ION,
 		.paddr = 0,
 	},
-#ifdef CONFIG_ANDROID_PMEM
+#elif defined(CONFIG_ANDROID_PMEM)
 	[7] = {
 		.id = S5P_MDEV_PMEM,
 		.name = "pmem",
