@@ -31,6 +31,7 @@
 #include <linux/irq.h>
 #include <linux/skbuff.h>
 #include <linux/console.h>
+#include <linux/ion.h>
 
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
@@ -425,7 +426,15 @@ static struct s5p_media_device p1_media_devs[] = {
 		.memsize = S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMD,
 		.paddr = 0,
 	},
-#ifdef CONFIG_ANDROID_PMEM
+#ifdef CONFIG_ION_S5P
+	[7] = {
+		.id = S5P_MDEV_ION,
+		.name = "ion",
+		.bank = 1,
+		.memsize = S5PV210_VIDEO_SAMSUNG_MEMSIZE_ION,
+		.paddr = 0,
+	},
+#elif defined(CONFIG_ANDROID_PMEM)
 	[7] = {
 		.id = S5P_MDEV_PMEM,
 		.name = "pmem",
@@ -459,10 +468,18 @@ static struct s5p_media_device p1_media_devs[] = {
 
 #ifdef CONFIG_CPU_FREQ
 static struct s5pv210_cpufreq_voltage smdkc110_cpufreq_volt[] = {
-	{
+        {
+                .freq   = 1400000,
+                .varm   = 1485000,
+                .vint   = 1185000,
+        }, {
+                .freq   = 1300000,
+                .varm   = 1450000,
+                .vint   = 1175000,
+        }, {	 
 		.freq	= 1200000,
 		.varm	= 1450000,
-		.vint	= 1200000,
+		.vint	= 1175000,
 	}, {
 		.freq	= 1000000,
 		.varm	= 1350000,
@@ -6667,23 +6684,16 @@ void s3c_config_sleep_gpio(void)
 		}
 	}
 
-
-	if(HWREV < 0x4) { // NC
-		s3c_gpio_cfgpin(GPIO_GPH10, S3C_GPIO_OUTPUT);
-		s3c_gpio_setpull(GPIO_GPH10, S3C_GPIO_PULL_NONE);
-		s3c_gpio_setpin(GPIO_GPH10, 0);
-	}
-
+	s3c_gpio_cfgpin(GPIO_GPH10, S3C_GPIO_OUTPUT);
+	s3c_gpio_setpull(GPIO_GPH10, S3C_GPIO_PULL_NONE);
+	s3c_gpio_setpin(GPIO_GPH10, 0);
 
 	s3c_gpio_cfgpin(GPIO_MHL_INT, S3C_GPIO_INPUT);
 	s3c_gpio_setpull(GPIO_MHL_INT, S3C_GPIO_PULL_DOWN);
 
-
-	if(HWREV < 0x4) { // NC
-		s3c_gpio_cfgpin(GPIO_GPH14, S3C_GPIO_OUTPUT);
-		s3c_gpio_setpull(GPIO_GPH14, S3C_GPIO_PULL_NONE);
-		s3c_gpio_setpin(GPIO_GPH14, 0);
-	}
+	s3c_gpio_cfgpin(GPIO_GPH14, S3C_GPIO_OUTPUT);
+	s3c_gpio_setpull(GPIO_GPH14, S3C_GPIO_PULL_NONE);
+	s3c_gpio_setpin(GPIO_GPH14, 0);
 
 	s3c_gpio_cfgpin(GPIO_HDMI_HPD, S3C_GPIO_INPUT);
 	s3c_gpio_setpull(GPIO_HDMI_HPD, S3C_GPIO_PULL_DOWN);
@@ -6745,18 +6755,13 @@ void s3c_config_sleep_gpio(void)
 	s3c_gpio_setpull(GPIO_MSENSE_IRQ, S3C_GPIO_PULL_UP);
 #endif
 
-	if(HWREV < 0x6) { // NC
-		s3c_gpio_cfgpin(GPIO_GPH33, S3C_GPIO_OUTPUT);
-		s3c_gpio_setpull(GPIO_GPH33, S3C_GPIO_PULL_NONE);
-		s3c_gpio_setpin(GPIO_GPH33, 0);
-	}
+	s3c_gpio_cfgpin(GPIO_GPH33, S3C_GPIO_OUTPUT);
+	s3c_gpio_setpull(GPIO_GPH33, S3C_GPIO_PULL_NONE);
+	s3c_gpio_setpin(GPIO_GPH33, 0);
 
-
-	if(HWREV < 11) { // NC
-		s3c_gpio_cfgpin(GPIO_GPH35, S3C_GPIO_OUTPUT);
-		s3c_gpio_setpull(GPIO_GPH35, S3C_GPIO_PULL_NONE);
-		s3c_gpio_setpin(GPIO_GPH35, 0);
-	}
+	s3c_gpio_cfgpin(GPIO_GPH35, S3C_GPIO_OUTPUT);
+	s3c_gpio_setpull(GPIO_GPH35, S3C_GPIO_PULL_NONE);
+	s3c_gpio_setpin(GPIO_GPH35, 0);
 
 	if(HWREV >= 0x4) {  // NC
 		s3c_gpio_cfgpin(GPIO_GPH36, S3C_GPIO_INPUT);
@@ -7102,6 +7107,40 @@ static struct platform_device p1_keyboard = {
         .id    = -1,
 };
 
+#ifdef CONFIG_ION_S5P
+
+static struct ion_platform_data ion_s5p_data = {
+	.nr = 2,
+	.heaps = {
+		{
+			.type = ION_HEAP_TYPE_SYSTEM,
+			.id = ION_HEAP_TYPE_SYSTEM,
+			.name = "system",
+		},
+		{
+			.type = ION_HEAP_TYPE_CARVEOUT,
+			.id = ION_HEAP_TYPE_CARVEOUT,
+			.name = "carveout",
+		},
+	},
+};
+
+static struct platform_device ion_s5p_device = {
+	.name = "ion-s5p",
+	.id = -1,
+	.dev = {
+		.platform_data = &ion_s5p_data,
+	},
+};
+
+static void ion_s5p_set_platdata(void)
+{
+	ion_s5p_data.heaps[1].base = s5p_get_media_memory_bank(S5P_MDEV_ION, 1);
+	ion_s5p_data.heaps[1].size = s5p_get_media_memsize_bank(S5P_MDEV_ION, 1);
+}
+
+#endif /* CONFIG_ION_S5P */
+
 static struct platform_device *p1_devices[] __initdata = {
 	&watchdog_device,
 #ifdef CONFIG_FIQ_DEBUGGER
@@ -7164,6 +7203,12 @@ static struct platform_device *p1_devices[] __initdata = {
 #endif
 	&sec_device_switch,  // samsung switch driver
 
+#if defined CONFIG_USB_S3C_OTG_HOST
+	&s3c_device_usb_otghcd,
+#endif
+#if defined CONFIG_USB_DWC_OTG
+	&s3c_device_usb_dwcotg,
+#endif
 #ifdef CONFIG_USB_GADGET
 	&s3c_device_usbgadget,
 #endif
@@ -7243,6 +7288,10 @@ static struct platform_device *p1_devices[] __initdata = {
 	&sec_device_dpram,
 #endif
 	&samsung_asoc_dma,
+
+#ifdef CONFIG_ION_S5P
+	&ion_s5p_device,
+#endif
 };
 
 unsigned int HWREV;
@@ -7492,6 +7541,10 @@ static void __init p1_machine_init(void)
 	android_pmem_set_platdata();
 #endif
 
+#ifdef CONFIG_ION_S5P
+	ion_s5p_set_platdata();
+#endif
+
 	gpio_request(GPIO_TOUCH_EN, "touch en");
 
 	/* i2c */
@@ -7518,6 +7571,7 @@ static void __init p1_machine_init(void)
 	/* magnetic and light sensor */
 	i2c_register_board_info(10, i2c_devs10, ARRAY_SIZE(i2c_devs10));
 
+	/* max8998 */
 	i2c_register_board_info(6, i2c_devs6, ARRAY_SIZE(i2c_devs6));
 	/* FSA9480 */
 	fsa9480_gpio_init();
@@ -7642,18 +7696,17 @@ void otg_phy_init(void)
 			S3C_USBOTG_PHYCLK);
 	writel((readl(S3C_USBOTG_RSTCON) & ~(0x3<<1)) | (0x1<<0),
 			S3C_USBOTG_RSTCON);
-	msleep(1);
+	mdelay(1);
 	writel(readl(S3C_USBOTG_RSTCON) & ~(0x7<<0),
 			S3C_USBOTG_RSTCON);
-	msleep(1);
+	mdelay(1);
 
 	/* rising/falling time */
 	writel(readl(S3C_USBOTG_PHYTUNE) | (0x1<<20),
 			S3C_USBOTG_PHYTUNE);
 
-	/* set DC level as 6 (6%) */
-	writel((readl(S3C_USBOTG_PHYTUNE) & ~(0xf)) | (0x1<<2) | (0x1<<1),
-			S3C_USBOTG_PHYTUNE);
+	/* set DC level as 0xf (24%) */
+	writel(readl(S3C_USBOTG_PHYTUNE) | 0xf, S3C_USBOTG_PHYTUNE);
 }
 EXPORT_SYMBOL(otg_phy_init);
 
@@ -7702,6 +7755,47 @@ void usb_host_phy_off(void)
 			S5P_USB_PHY_CONTROL);
 }
 EXPORT_SYMBOL(usb_host_phy_off);
+#endif
+
+#if defined CONFIG_USB_S3C_OTG_HOST || defined CONFIG_USB_DWC_OTG
+
+/* Initializes OTG Phy */
+void otg_host_phy_init(void)
+{
+	__raw_writel(__raw_readl(S5P_USB_PHY_CONTROL)
+		|(0x1<<0), S5P_USB_PHY_CONTROL); /*USB PHY0 Enable */
+	// from galaxy tab otg host:
+	__raw_writel((__raw_readl(S3C_USBOTG_PHYPWR)
+		&~(0x3<<3)&~(0x1<<0))|(0x1<<5), S3C_USBOTG_PHYPWR);
+	// from galaxy s2 otg host:
+	//     __raw_writel((__raw_readl(S3C_USBOTG_PHYPWR)
+	//           &~(0x7<<3)&~(0x1<<0)), S3C_USBOTG_PHYPWR);
+	__raw_writel((__raw_readl(S3C_USBOTG_PHYCLK)
+		&~(0x1<<4))|(0x7<<0), S3C_USBOTG_PHYCLK);
+
+	__raw_writel((__raw_readl(S3C_USBOTG_RSTCON)
+		&~(0x3<<1))|(0x1<<0), S3C_USBOTG_RSTCON);
+
+	mdelay(1);
+
+	__raw_writel((__raw_readl(S3C_USBOTG_RSTCON)
+		&~(0x7<<0)), S3C_USBOTG_RSTCON);
+
+	mdelay(1);
+
+	__raw_writel((__raw_readl(S3C_UDC_OTG_GUSBCFG)
+		|(0x3<<8)), S3C_UDC_OTG_GUSBCFG);
+
+	//smb136_set_otg_mode(1);
+
+	printk("otg_host_phy_int : USBPHYCTL=0x%x,PHYPWR=0x%x,PHYCLK=0x%x,USBCFG=0x%x\n",
+		readl(S5P_USB_PHY_CONTROL),
+		readl(S3C_USBOTG_PHYPWR),
+		readl(S3C_USBOTG_PHYCLK),
+		readl(S3C_UDC_OTG_GUSBCFG)
+	);
+}
+EXPORT_SYMBOL(otg_host_phy_init);
 #endif
 
 #if defined(CONFIG_SAMSUNG_P1)
