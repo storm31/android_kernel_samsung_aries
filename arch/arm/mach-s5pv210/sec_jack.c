@@ -541,7 +541,10 @@ static int sec_jack_probe(struct platform_device *pdev)
 	s3c_gpio_setpull(send_end->gpio, S3C_GPIO_PULL_NONE);
 	irq_set_irq_type(send_end->eint, IRQ_TYPE_EDGE_BOTH);
 
-	ret = request_irq(send_end->eint, send_end_irq_handler, IRQF_DISABLED, "sec_headset_send_end", NULL);
+	ret = request_threaded_irq(send_end->eint, NULL,
+				   send_end_irq_handler,
+				   IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING |
+				   IRQF_ONESHOT, "sec_headset_send_end", send_end);
 
 	SEC_JACKDEV_DBG("sended isr send=0X%x, ret =%d", send_end->eint, ret);
 	if (ret < 0)
@@ -561,7 +564,10 @@ static int sec_jack_probe(struct platform_device *pdev)
 	s3c_gpio_setpull(det_jack->gpio, S3C_GPIO_PULL_NONE);
 	irq_set_irq_type(det_jack->eint, IRQ_TYPE_EDGE_BOTH);
 
-	ret = request_irq(det_jack->eint, detect_irq_handler, IRQF_DISABLED, "sec_headset_detect", NULL);
+	ret = request_threaded_irq(det_jack->eint, NULL,
+				   detect_irq_handler,
+				   IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING |
+				   IRQF_ONESHOT, "sec_headset_detect", det_jack);
 
 	SEC_JACKDEV_DBG("det isr det=0X%x, ret =%d", det_jack->eint, ret);
 	if (ret < 0)
