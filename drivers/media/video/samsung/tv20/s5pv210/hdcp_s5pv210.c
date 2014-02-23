@@ -274,6 +274,7 @@ void s5p_hdmi_mute_en(bool en)
 /*
  * 1st Authentication step func.
  * Write the Ainfo data to Rx
+ */
 static bool write_ainfo(void)
 {
 	int ret = 0;
@@ -288,7 +289,6 @@ static bool write_ainfo(void)
 
 	return (ret < 0) ? false : true;
 }
- */
 
 /*
  * Write the An data to Rx

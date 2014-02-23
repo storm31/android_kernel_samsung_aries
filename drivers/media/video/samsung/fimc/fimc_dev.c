@@ -756,7 +756,6 @@ static u32 fimc_poll(struct file *filp, poll_table *wait)
 static
 ssize_t fimc_read(struct file *filp, char *buf, size_t count, loff_t *pos)
 {
-	int err = 0;
 #ifdef CONFIG_MACH_P1
 	printk("%s, for factory test\n", __func__);
 
@@ -766,15 +765,15 @@ ssize_t fimc_read(struct file *filp, char *buf, size_t count, loff_t *pos)
 	gpio_free(S5PV210_MP04(2));
 	gpio_free(S5PV210_MP04(3));
 #endif
-	return err;
+	return 0;
 }
 
 static
 ssize_t fimc_write(struct file *filp, const char *b, size_t c, loff_t *offset)
 {
-	int err = 0;
 #ifdef CONFIG_MACH_P1
 	int i = 0;
+	int err = 0;
 
 	printk("%s, for factory test\n", __func__);
 
@@ -804,7 +803,7 @@ ssize_t fimc_write(struct file *filp, const char *b, size_t c, loff_t *offset)
 	gpio_direction_output(S5PV210_MP04(2), 1);
 	mdelay(2);
 #endif
-	return err;
+	return 0;
 }
 
 u32 fimc_mapping_rot_flip(u32 rot, u32 flip)
