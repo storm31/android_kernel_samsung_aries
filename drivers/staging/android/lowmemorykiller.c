@@ -213,8 +213,9 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 #endif
 
 	rcu_read_lock();
-	for_each_process(tsk) {
-		struct task_struct *p;
+	for_each_process(p) {
+		struct mm_struct *mm;
+		struct signal_struct *sig;
 		int oom_adj;
 #ifdef ENHANCED_LMK_ROUTINE
 		int is_exist_oom_task = 0;
