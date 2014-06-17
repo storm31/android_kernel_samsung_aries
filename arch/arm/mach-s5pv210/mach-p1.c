@@ -49,7 +49,6 @@
 #include <mach/param.h>
 #include <mach/system.h>
 
-#include <mach/voltages.h>
 #include <linux/usb/gadget.h>
 #include <linux/fsa9480.h>
 #include <linux/notifier.h>
