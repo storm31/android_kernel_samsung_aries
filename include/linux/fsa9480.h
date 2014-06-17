@@ -42,9 +42,10 @@ struct fsa9480_platform_data {
 #endif
 };
 
+#ifdef CONFIG_MACH_ARIES
 extern int fsa9480_get_dock_status(void);
+#endif
 
-#ifdef CONFIG_MACH_P1
 enum {
 	AUTO_SWITCH = 0,
 	SWITCH_USB_Port,
@@ -54,5 +55,4 @@ enum {
 };
 
 void fsa9480_manual_switching(int path);
-#endif
 #endif /* _FSA9480_H_ */

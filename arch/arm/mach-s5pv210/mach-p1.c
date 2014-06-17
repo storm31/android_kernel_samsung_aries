@@ -37,6 +37,7 @@
 #include <asm/mach/map.h>
 #include <asm/setup.h>
 #include <asm/mach-types.h>
+#include <asm/system.h>
 
 #include <mach/map.h>
 #include <mach/regs-clock.h>
@@ -48,10 +49,7 @@
 #include <mach/param.h>
 #include <mach/system.h>
 
-#ifdef CONFIG_SEC_HEADSET
-#include <mach/sec_jack.h>
-#endif
-
+#include <mach/voltages.h>
 #include <linux/usb/gadget.h>
 #include <linux/fsa9480.h>
 #include <linux/notifier.h>
@@ -106,6 +104,7 @@
 #include <linux/i2c/l3g4200d.h>
 #include <../../../drivers/input/misc/bma020.h>
 #include <../../../drivers/video/samsung/s3cfb.h>
+#include <linux/sec_jack.h>
 #include <linux/max17042_battery.h>
 #include <linux/switch.h>
 
@@ -138,7 +137,6 @@ EXPORT_SYMBOL(sec_get_param_value);
 #define KERNEL_REBOOT_MASK      0xFFFFFFFF
 #define REBOOT_MODE_FAST_BOOT		7
 
-
 #ifdef CONFIG_DHD_USE_STATIC_BUF
 
 #define PREALLOC_WLAN_SEC_NUM		4
@@ -162,7 +160,9 @@ struct wifi_mem_prealloc {
 
 #endif
 
-
+static DEFINE_SPINLOCK(mic_bias_lock);
+static bool wm8994_mic_bias;
+static bool jack_mic_bias;
 struct sec_battery_callbacks *callbacks;
 struct max17042_callbacks *max17042_cb;
 static enum cable_type_t set_cable_status;
@@ -173,10 +173,12 @@ static int sec_switch_inited = 0;
 static bool fsa9480_jig_status = 0;
 static bool ap_vbus_disabled = 0;
 
-int sec_switch_set_regulator(int mode);
+void sec_switch_set_regulator(int mode);
 void otg_phy_init(void);
 
+#ifdef CONFIG_KEYBOARD_P1
 extern bool keyboard_enable;
+#endif
 
 static int p1_notifier_call(struct notifier_block *this,
 					unsigned long code, void *_cmd)
@@ -2657,6 +2659,21 @@ static struct s3c_platform_jpeg jpeg_plat __initdata = {
 };
 #endif
 
+static void set_shared_mic_bias(void)
+{
+	gpio_set_value(GPIO_EAR_MICBIAS0_EN, jack_mic_bias);
+	gpio_set_value(GPIO_EAR_MICBIAS_EN, jack_mic_bias);
+}
+
+static void sec_jack_set_micbias_state(bool on)
+{
+	unsigned long flags;
+	pr_debug("%s: HWREV=%d, on=%d\n", __func__, HWREV, on ? 1 : 0);
+	spin_lock_irqsave(&mic_bias_lock, flags);
+	jack_mic_bias = on;
+	set_shared_mic_bias();
+	spin_unlock_irqrestore(&mic_bias_lock, flags);
+}
 
 static struct i2c_board_info i2c_devs4[] __initdata = {
 	{
@@ -2676,11 +2693,6 @@ static struct i2c_board_info i2c_devs4[] __initdata = {
 		I2C_BOARD_INFO("SII9234C", 0xC8>>1),
 	},
 #endif
-};
-
-static struct platform_device bma020_accel = {
-       .name  = "bma020-accelerometer",
-       .id    = -1,
 };
 
 static struct l3g4200d_platform_data l3g4200d_p1p2_platform_data = {
@@ -2872,9 +2884,12 @@ static struct i2c_board_info i2c_devs6[] __initdata = {
 		I2C_BOARD_INFO("max8998", (0xCC >> 1)),
 		.platform_data	= &max8998_pdata,
 		.irq		= IRQ_EINT7,
-	}, {
+	},
+    /*
+    {
 		I2C_BOARD_INFO("rtc_max8998", (0x0D >> 1)),
 	},
+    */
 #endif
 };
 
@@ -3073,7 +3088,7 @@ int sec_switch_get_regulator(void)
 	return 0;
 }
 
-int sec_switch_set_regulator(int mode)
+void sec_switch_set_regulator(int mode)
 {
 	struct usb_gadget *gadget = platform_get_drvdata(&s3c_device_usbgadget);
 
@@ -3082,7 +3097,7 @@ int sec_switch_set_regulator(int mode)
 	if (IS_ERR_OR_NULL(reg_safeout1) ||
 		IS_ERR_OR_NULL(reg_safeout2)) {
 		pr_err("safeout regulators not initialized yet!!\n");
-		return -EINVAL;
+		return;
 	}
 
 	// note : safeout1/safeout2 register setting is not matched regulator's use_count.
@@ -3116,7 +3131,6 @@ int sec_switch_set_regulator(int mode)
 		usb_gadget_vbus_disconnect(gadget);
 		ap_vbus_disabled = 1;  // set flag
 	}
-	return 0;
 }
 
 int sec_switch_get_cable_status(void)
@@ -3164,37 +3178,112 @@ static struct platform_device sec_device_btsleep = {
 	.id	= -1,
 };
 
-#ifdef CONFIG_SEC_HEADSET
-static struct sec_jack_port sec_jack_port_info[] = {
+static struct sec_jack_zone sec_jack_zones[] = {
 	{
-		{ // HEADSET detect info
-			.eint		= IRQ_EINT8,
-			.gpio		= GPIO_DET_35,
-			.gpio_af	= GPIO_DET_35_AF ,
-			.low_active = 1
-		},
-		{ // SEND/END info
-			.eint		= IRQ_EINT12,
-			.gpio		= GPIO_EAR_SEND_END,
-			.gpio_af	= GPIO_EAR_SEND_END_AF,
-			.low_active = 1
-		}
+		/* adc == 0, unstable zone, default to 3pole if it stays
+		* in this range for a half second (20ms delays, 25 samples)
+		*/
+		.adc_high = 0,
+		.delay_ms = 20,
+		.check_count = 25,
+		.jack_type = SEC_HEADSET_3POLE,
+	},
+	{
+		/* 0 < adc <= 400, unstable zone, default to 3pole if it stays
+		* in this range for 800ms (10ms delays, 80 samples)
+		*/
+		.adc_high = 400,
+		.delay_ms = 10,
+		.check_count = 80,
+		.jack_type = SEC_HEADSET_3POLE,
+	},
+	{
+		/* 400 < adc <= 3100, default to 4pole if it
+		* stays in this range for 800ms (10ms delays, 80 samples)
+		*/
+		.adc_high = 3100,
+		.delay_ms = 10,
+		.check_count = 80,
+		.jack_type = SEC_HEADSET_4POLE,
+	},
+	{
+		/* adc > max for device above, unstable zone, default to 3pole if it stays
+		* in this range for two seconds (10ms delays, 200 samples)
+		*/
+		.adc_high = 0x7fffffff,
+		.delay_ms = 10,
+		.check_count = 200,
+		.jack_type = SEC_HEADSET_3POLE,
+	},
+};
+
+/* To support 3-buttons earjack */
+static struct sec_jack_buttons_zone sec_jack_buttons_zones[] = {
+	{
+		/* 0 <= adc <=110, stable zone */
+		.code		= KEY_MEDIA,
+		.adc_low	= 0,
+		.adc_high	= 110,
+	},
+	{
+		/* 130 <= adc <= 365, stable zone */
+		.code		= KEY_PREVIOUSSONG, //KEY_VOLUMEDOWN ?
+		.adc_low	= 130,
+		.adc_high	= 365,
+	},
+	{
+		/* 385 <= adc <= 870, stable zone */
+		.code		= KEY_NEXTSONG, //KEY_VOLUMEUP ?
+		.adc_low	= 385,
+		.adc_high	= 870,
+	},
+};
+
+static int sec_jack_get_adc_value(void)
+{
+    pr_info("%s: sec_jack adc value = %i \n", __func__, s3c_adc_get_adc_data(3));
+	return s3c_adc_get_adc_data(3);
+}
+
+struct sec_jack_platform_data sec_jack_pdata = {
+	.set_micbias_state = sec_jack_set_micbias_state,
+	.get_adc_value = sec_jack_get_adc_value,
+	.zones = sec_jack_zones,
+	.num_zones = ARRAY_SIZE(sec_jack_zones),
+	.buttons_zones = sec_jack_buttons_zones,
+	.num_buttons_zones = ARRAY_SIZE(sec_jack_buttons_zones),
+	.det_gpio = GPIO_DET_35,
+	.send_end_gpio = GPIO_EAR_SEND_END,
+};
+
+static struct platform_device sec_device_jack = {
+	.name			= "sec_jack",
+	.id			= 1, /* will be used also for gpio_event id */
+	.dev.platform_data	= &sec_jack_pdata,
+};
+
+static void __init sec_jack_init(void)
+{
+	if (gpio_is_valid(GPIO_EAR_MICBIAS0_EN)) {
+		if (gpio_request(GPIO_EAR_MICBIAS0_EN, "MP05"))
+			printk(KERN_ERR "Failed to request GPIO_EAR_MICBIAS0_EN! \n");
+		gpio_direction_output(GPIO_EAR_MICBIAS0_EN, 0);
 	}
-};
+	s3c_gpio_setpull(GPIO_EAR_MICBIAS0_EN, S3C_GPIO_PULL_NONE);
+	s3c_gpio_slp_cfgpin(GPIO_EAR_MICBIAS0_EN, S3C_GPIO_SLP_PREV);
+	s3c_gpio_slp_setpull_updown(GPIO_EAR_MICBIAS0_EN, S3C_GPIO_PULL_NONE);
 
-static struct sec_jack_platform_data sec_jack_pdata = {
-		.port			= sec_jack_port_info,
-		.nheadsets		= ARRAY_SIZE(sec_jack_port_info)
-};
+	if (gpio_is_valid(GPIO_EAR_MICBIAS_EN)) {
+		if (gpio_request(GPIO_EAR_MICBIAS_EN, "MP01"))
+			printk(KERN_ERR "Failed to request GPIO_EAR_MICBIAS_EN! \n");
+		gpio_direction_output(GPIO_EAR_MICBIAS_EN, 0);
+	}
+	s3c_gpio_setpull(GPIO_EAR_MICBIAS_EN, S3C_GPIO_PULL_NONE);
+	s3c_gpio_slp_cfgpin(GPIO_EAR_MICBIAS_EN, S3C_GPIO_SLP_PREV);
+	s3c_gpio_slp_setpull_updown(GPIO_EAR_MICBIAS_EN, S3C_GPIO_PULL_NONE);
 
-static struct platform_device sec_device_jack= {
-		.name			= "sec_jack",
-		.id 			= -1,
-		.dev			= {
-				.platform_data	= &sec_jack_pdata,
-		}
-};
-#endif
+	printk("EAR_MICBIAS Init\n");
+}
 
  /* touch screen device init */
 static void __init qt_touch_init(void)
@@ -6695,10 +6784,12 @@ static unsigned int p1_lcd_tft_sleep_gpio_table[][3] = {
 			S3C_GPIO_SLP_OUT0, S3C_GPIO_PULL_NONE},
 };
 
+#if defined(CONFIG_KEYBOARD_P1)
 static unsigned int p1_keyboard_sleep_gpio_table[][3] = {
 	{S5PV210_GPJ1(4),  // ACCESSORY_EN
 		S3C_GPIO_SLP_PREV, S3C_GPIO_PULL_UP},
 };
+#endif
 
 void s3c_config_sleep_gpio_table(int array_size, unsigned int (*gpio_table)[3])
 {
@@ -6751,23 +6842,16 @@ void s3c_config_sleep_gpio(void)
 		}
 	}
 
-
-	if(HWREV < 0x4) { // NC
-		s3c_gpio_cfgpin(GPIO_GPH10, S3C_GPIO_OUTPUT);
-		s3c_gpio_setpull(GPIO_GPH10, S3C_GPIO_PULL_NONE);
-		s3c_gpio_setpin(GPIO_GPH10, 0);
-	}
-
+	s3c_gpio_cfgpin(GPIO_GPH10, S3C_GPIO_OUTPUT);
+	s3c_gpio_setpull(GPIO_GPH10, S3C_GPIO_PULL_NONE);
+	s3c_gpio_setpin(GPIO_GPH10, 0);
 
 	s3c_gpio_cfgpin(GPIO_MHL_INT, S3C_GPIO_INPUT);
 	s3c_gpio_setpull(GPIO_MHL_INT, S3C_GPIO_PULL_DOWN);
 
-
-	if(HWREV < 0x4) { // NC
-		s3c_gpio_cfgpin(GPIO_GPH14, S3C_GPIO_OUTPUT);
-		s3c_gpio_setpull(GPIO_GPH14, S3C_GPIO_PULL_NONE);
-		s3c_gpio_setpin(GPIO_GPH14, 0);
-	}
+	s3c_gpio_cfgpin(GPIO_GPH14, S3C_GPIO_OUTPUT);
+	s3c_gpio_setpull(GPIO_GPH14, S3C_GPIO_PULL_NONE);
+	s3c_gpio_setpin(GPIO_GPH14, 0);
 
 	s3c_gpio_cfgpin(GPIO_HDMI_HPD, S3C_GPIO_INPUT);
 	s3c_gpio_setpull(GPIO_HDMI_HPD, S3C_GPIO_PULL_DOWN);
@@ -6829,18 +6913,13 @@ void s3c_config_sleep_gpio(void)
 	s3c_gpio_setpull(GPIO_MSENSE_IRQ, S3C_GPIO_PULL_UP);
 #endif
 
-	if(HWREV < 0x6) { // NC
-		s3c_gpio_cfgpin(GPIO_GPH33, S3C_GPIO_OUTPUT);
-		s3c_gpio_setpull(GPIO_GPH33, S3C_GPIO_PULL_NONE);
-		s3c_gpio_setpin(GPIO_GPH33, 0);
-	}
+	s3c_gpio_cfgpin(GPIO_GPH33, S3C_GPIO_OUTPUT);
+	s3c_gpio_setpull(GPIO_GPH33, S3C_GPIO_PULL_NONE);
+	s3c_gpio_setpin(GPIO_GPH33, 0);
 
-
-	if(HWREV < 11) { // NC
-		s3c_gpio_cfgpin(GPIO_GPH35, S3C_GPIO_OUTPUT);
-		s3c_gpio_setpull(GPIO_GPH35, S3C_GPIO_PULL_NONE);
-		s3c_gpio_setpin(GPIO_GPH35, 0);
-	}
+	s3c_gpio_cfgpin(GPIO_GPH35, S3C_GPIO_OUTPUT);
+	s3c_gpio_setpull(GPIO_GPH35, S3C_GPIO_PULL_NONE);
+	s3c_gpio_setpin(GPIO_GPH35, 0);
 
 	if(HWREV >= 0x4) {  // NC
 		s3c_gpio_cfgpin(GPIO_GPH36, S3C_GPIO_INPUT);
@@ -7261,11 +7340,9 @@ static struct platform_device *p1_devices[] __initdata = {
 
 	&s3c_device_g3d,
 	&s3c_device_lcd,
-
-#if defined(CONFIG_SEC_HEADSET)
 	&sec_device_jack,
-#endif
 	&s3c_device_i2c0,
+
 #if defined(CONFIG_S3C_DEV_I2C1)
 	&s3c_device_i2c1,
 #endif
@@ -7283,6 +7360,12 @@ static struct platform_device *p1_devices[] __initdata = {
 	&p1_s3c_device_i2c13, /*cmc623 mdnie */
 #if defined (CONFIG_VIDEO_NM6XX)
 	&p1_s3c_device_i2c15, /* nmi625  */
+#endif
+#if defined CONFIG_USB_S3C_OTG_HOST
+	&s3c_device_usb_otghcd,
+#endif
+#if defined CONFIG_USB_DWC_OTG
+	&s3c_device_usb_dwcotg,
 #endif
 	&sec_device_switch,  // samsung switch driver
 
@@ -7645,8 +7728,6 @@ static void __init p1_machine_init(void)
 		i2c_devs5[ARRAY_SIZE(i2c_devs5)-1].addr += 1;						// From HW rev 0.9, slave addres is changed from 0x68 to 0x69
 		i2c_register_board_info(5, i2c_devs5, ARRAY_SIZE(i2c_devs5));
 	}
-	/* magnetic and light sensor */
-	i2c_register_board_info(10, i2c_devs10, ARRAY_SIZE(i2c_devs10));
 
 	/* max8998 */
 	i2c_register_board_info(6, i2c_devs6, ARRAY_SIZE(i2c_devs6));
@@ -7657,6 +7738,9 @@ static void __init p1_machine_init(void)
 	/* max17042 */
 	max17042_gpio_init();
 	i2c_register_board_info(9, i2c_devs9, ARRAY_SIZE(i2c_devs9));
+
+	/* magnetic and light sensor */
+	i2c_register_board_info(10, i2c_devs10, ARRAY_SIZE(i2c_devs10));
 
 	/* smb136 */
 	smb136_gpio_init();
@@ -7735,6 +7819,8 @@ static void __init p1_machine_init(void)
 
 	p1_init_wifi_mem();
 
+	sec_jack_init();
+
 	qt_touch_init();
 
 
@@ -7773,18 +7859,17 @@ void otg_phy_init(void)
 			S3C_USBOTG_PHYCLK);
 	writel((readl(S3C_USBOTG_RSTCON) & ~(0x3<<1)) | (0x1<<0),
 			S3C_USBOTG_RSTCON);
-	msleep(1);
+	mdelay(1);
 	writel(readl(S3C_USBOTG_RSTCON) & ~(0x7<<0),
 			S3C_USBOTG_RSTCON);
-	msleep(1);
+	mdelay(1);
 
 	/* rising/falling time */
 	writel(readl(S3C_USBOTG_PHYTUNE) | (0x1<<20),
 			S3C_USBOTG_PHYTUNE);
 
-	/* set DC level as 6 (6%) */
-	writel((readl(S3C_USBOTG_PHYTUNE) & ~(0xf)) | (0x1<<2) | (0x1<<1),
-			S3C_USBOTG_PHYTUNE);
+	/* set DC level as 0xf (24%) */
+	writel(readl(S3C_USBOTG_PHYTUNE) | 0xf, S3C_USBOTG_PHYTUNE);
 }
 EXPORT_SYMBOL(otg_phy_init);
 
@@ -7833,6 +7918,47 @@ void usb_host_phy_off(void)
 			S5P_USB_PHY_CONTROL);
 }
 EXPORT_SYMBOL(usb_host_phy_off);
+#endif
+
+#if defined CONFIG_USB_S3C_OTG_HOST || defined CONFIG_USB_DWC_OTG
+
+/* Initializes OTG Phy */
+void otg_host_phy_init(void)
+{
+	__raw_writel(__raw_readl(S5P_USB_PHY_CONTROL)
+		|(0x1<<0), S5P_USB_PHY_CONTROL); /*USB PHY0 Enable */
+	// from galaxy tab otg host:
+	__raw_writel((__raw_readl(S3C_USBOTG_PHYPWR)
+		&~(0x3<<3)&~(0x1<<0))|(0x1<<5), S3C_USBOTG_PHYPWR);
+	// from galaxy s2 otg host:
+	//     __raw_writel((__raw_readl(S3C_USBOTG_PHYPWR)
+	//           &~(0x7<<3)&~(0x1<<0)), S3C_USBOTG_PHYPWR);
+	__raw_writel((__raw_readl(S3C_USBOTG_PHYCLK)
+		&~(0x1<<4))|(0x7<<0), S3C_USBOTG_PHYCLK);
+
+	__raw_writel((__raw_readl(S3C_USBOTG_RSTCON)
+		&~(0x3<<1))|(0x1<<0), S3C_USBOTG_RSTCON);
+
+	mdelay(1);
+
+	__raw_writel((__raw_readl(S3C_USBOTG_RSTCON)
+		&~(0x7<<0)), S3C_USBOTG_RSTCON);
+
+	mdelay(1);
+
+	__raw_writel((__raw_readl(S3C_UDC_OTG_GUSBCFG)
+		|(0x3<<8)), S3C_UDC_OTG_GUSBCFG);
+
+	//smb136_set_otg_mode(1);
+
+	printk("otg_host_phy_int : USBPHYCTL=0x%x,PHYPWR=0x%x,PHYCLK=0x%x,USBCFG=0x%x\n",
+		readl(S5P_USB_PHY_CONTROL),
+		readl(S3C_USBOTG_PHYPWR),
+		readl(S3C_USBOTG_PHYCLK),
+		readl(S3C_UDC_OTG_GUSBCFG)
+	);
+}
+EXPORT_SYMBOL(otg_host_phy_init);
 #endif
 
 #if defined(CONFIG_SAMSUNG_P1)
