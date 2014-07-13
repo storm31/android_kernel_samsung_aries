@@ -37,6 +37,7 @@
 #include <asm/mach/map.h>
 #include <asm/setup.h>
 #include <asm/mach-types.h>
+#include <asm/system.h>
 
 #include <mach/map.h>
 #include <mach/regs-clock.h>
