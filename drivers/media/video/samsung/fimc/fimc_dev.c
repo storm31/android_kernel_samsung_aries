@@ -1639,7 +1639,7 @@ int fimc_suspend(struct platform_device *pdev, pm_message_t state)
 		fimc_suspend_cap(ctrl);
 	else
 		ctrl->status = FIMC_OFF_SLEEP;
-
+#ifdef CONFIG_MACH_ARIES
 	if (atomic_read(&ctrl->in_use) && ctrl->status != FIMC_OFF_SLEEP)
 #else // CONFIG_MACH_P1
 	if (atomic_read(&ctrl->in_use))
