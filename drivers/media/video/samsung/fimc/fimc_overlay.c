@@ -106,7 +106,7 @@ static int fimc_change_fifo_position(struct fimc_control *ctrl,
 	int ret = -1;
 
 	fbinfo = registered_fb[ctx->overlay.fb_id];
-#if defined (CONFIG_MACH_P1) || defined (CONFIG_SAMSUNG_YPG1)
+#ifdef CONFIG_MACH_P1
 	win = (struct s3cfb_window *)fbinfo->par;
 #endif
 
@@ -156,7 +156,7 @@ int fimc_s_fmt_vid_overlay(struct file *filp, void *fh, struct v4l2_format *f)
 			return ret;
 
 		ctx->win = f->fmt.win;
-#if defined (CONFIG_MACH_ARIES) && !defined (CONFIG_SAMSUNG_YPG1)
+#ifdef CONFIG_MACH_ARIES
 		fimc_change_fifo_position(ctrl, ctx);
 #endif
 
@@ -283,7 +283,7 @@ int fimc_s_fbuf(struct file *filp, void *fh, struct v4l2_framebuffer *fb)
 		ctx->overlay.mode = FIMC_OVLY_NONE_SINGLE_BUF;
 	} else {
 		int i;
-#if defined (CONFIG_MACH_P1) || defined (CONFIG_SAMSUNG_YPG1)
+#ifdef CONFIG_MACH_P1
 		unsigned int bits_per_pixel = 0;
 #endif
 		struct s3cfb_window *win = NULL;
@@ -293,7 +293,7 @@ int fimc_s_fbuf(struct file *filp, void *fh, struct v4l2_framebuffer *fb)
 			win = (struct s3cfb_window *)registered_fb[i]->par;
 			if (win->id == ctrl->id) {
 				ctx->overlay.fb_id = i;
-#if defined (CONFIG_MACH_P1) || defined (CONFIG_SAMSUNG_YPG1)
+#ifdef CONFIG_MACH_P1
 				bits_per_pixel = registered_fb[i]->var.bits_per_pixel;
 #endif
 				fimc_info2("%s: overlay.fb_id = %d\n",
@@ -317,8 +317,7 @@ int fimc_s_fbuf(struct file *filp, void *fh, struct v4l2_framebuffer *fb)
 		}
 
 		ctx->overlay.mode = FIMC_OVLY_NOT_FIXED;
-#if defined (CONFIG_MACH_P1) || defined (CONFIG_SAMSUNG_YPG1)
-
+#ifdef CONFIG_MACH_P1
 		switch (ctx->rotate) {
 		case 0:
 		case 180:
