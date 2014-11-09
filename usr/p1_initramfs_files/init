@@ -20,14 +20,14 @@ done
 busybox mount -t ext4 /dev/lvpool/system /system
 busybox mount -t yaffs2 /dev/block/mtdblock3 /cache
 
-load_image=/stage1/boot.cpio
+load_image=/stage1/boot.img
 
 if busybox test -e /cache/.startrecovery || busybox grep -q bootmode=2 /proc/cmdline ; then
     # recovery boot
     busybox echo 'RECOVERY BOOT' >>boot.txt
     busybox rm -fr /cache/.startrecovery
-    load_image=/stage1/recovery.cpio
-    busybox echo "loading recovery.cpio" >>boot.txt
+    load_image=/stage1/recovery.img
+    busybox echo "loading recovery.img" >>boot.txt
 
 	# disable lpm
 	busybox echo 0 > /sys/class/power_supply/battery/charging_mode_booting
@@ -55,8 +55,8 @@ elif ! busybox test -e /system/build.prop ; then
         busybox echo "omni.cfg not found" >>boot.txt
     fi
 
-    busybox echo "loading recovery.cpio" >>boot.txt
-    load_image=/stage1/recovery.cpio
+    busybox echo "loading recovery.img" >>boot.txt
+    load_image=/stage1/recovery.img
 
     # umount sdcard
     busybox umount /sdcard
@@ -90,9 +90,9 @@ HW=$(busybox cat /proc/cpuinfo | \
     busybox tr -d '\t')
 
 if [ "$HW" != "p1" ] ; then
-    if [ "$load_image" == "/stage1/boot.cpio" ] ; then
+    if [ "$load_image" == "/stage1/boot.img" ] ; then
         busybox ln -s /init.p1.rc /init.$HW.rc
-    elif [ "$load_image" == "/stage1/recovery.cpio" ] ; then
+    elif [ "$load_image" == "/stage1/recovery.img" ] ; then
         busybox ln -s /init.recovery.p1.rc /init.recovery.$HW.rc
     fi
 
