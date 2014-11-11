@@ -49,8 +49,8 @@ elif ! busybox test -e /system/build.prop ; then
     if busybox test -e /sdcard/cyanogenmod.cfg ; then
         busybox echo "installing: `busybox cat /sdcard/cyanogenmod.cfg`" >>boot.txt
         busybox echo "creating recovery command" >>boot.txt
-        busybox touch /cache/recovery/command
-        busybox echo "--update_package=`busybox cat /sdcard/cyanogenmod.cfg`" > /cache/recovery/command
+        busybox touch /cache/recovery/extendedcommand
+        busybox echo "--update_package=`busybox cat /sdcard/cyanogenmod.cfg`" > /cache/recovery/extendedcommand
     else
         busybox echo "cyanogenmod.cfg not found" >>boot.txt
     fi
