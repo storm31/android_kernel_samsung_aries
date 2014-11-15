@@ -757,6 +757,7 @@ int fimc_s_input(struct file *file, void *fh, unsigned int i)
 	fimc_dbg("%s: index %d\n", __func__, i);
 
 #if defined (CONFIG_MACH_P1) || defined (CONFIG_SAMSUNG_YPG1)
+	int err = 0;
 #if defined(CONFIG_VIDEO_NM6XX)
 	if( i == 0 && camera_back_check && camera_active_type == 4 )
 #else
