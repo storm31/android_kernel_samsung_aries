@@ -39,9 +39,9 @@ elif ! busybox test -e /system/build.prop ; then
     erase_image cache
     busybox mount -t yaffs2 /dev/block/mtdblock3 /cache
 
-    if ! busybox test -e /cache/recovery ; then
+    #if ! busybox test -e /cache/recovery ; then
         busybox mkdir /cache/recovery
-    fi
+    #fi
 
     busybox mount -t vfat /dev/block/mmcblk0p1 /sdcard
     busybox sleep 1
