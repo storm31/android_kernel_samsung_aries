@@ -23,11 +23,7 @@
 #include <linux/rtc.h>
 #include <mach/gpio.h>
 #include <plat/gpio-cfg.h>
-#ifdef CONFIG_SAMSUNG_YPG1
-#include <mach/gpio-ypg1.h>
-#else
 #include <mach/gpio-p1.h>
-#endif
 #include <mach/regs-clock.h>
 
 #include <plat/regs-fimc.h>
@@ -203,11 +199,11 @@ struct isx005_state {
 	int set_vhflip;
 };
 
-const static struct v4l2_mbus_framefmt capture_fmts[] = {
-    {
-	.code    = V4L2_MBUS_FMT_FIXED,
-	.colorspace  = V4L2_COLORSPACE_JPEG,
-    },
+static const struct v4l2_mbus_framefmt capture_fmts[] = {
+	{
+		.code		= V4L2_MBUS_FMT_FIXED,
+		.colorspace	= V4L2_COLORSPACE_JPEG,
+	},
 };
 
 #ifdef CONFIG_LOAD_FILE
@@ -3508,7 +3504,7 @@ static int isx005_s_crystal_freq(struct v4l2_subdev *sd, u32 freq, u32 flags)
 	return err;
 }
 
-static int isx005_g_fmt(struct v4l2_subdev *sd, struct v4l2_format *fmt)
+static int isx005_g_mbus_fmt(struct v4l2_subdev *sd, struct v4l2_mbus_framefmt *fmt)
 {
 	int err = 0;
 
@@ -3640,8 +3636,8 @@ static int isx005_s_mbus_fmt(struct v4l2_subdev *sd, struct v4l2_mbus_framefmt *
 	int err = 0;
 	int framesize_index = -1;
 
-	if(fmt->code == V4L2_PIX_FMT_JPEG && fmt->colorspace != V4L2_COLORSPACE_JPEG)
-	{
+	if (fmt->code == V4L2_MBUS_FMT_FIXED &&
+		fmt->colorspace != V4L2_COLORSPACE_JPEG) {
 		dev_err(&client->dev, "%s: mismatch in pixelformat and colorspace\n", __func__);
 		return -EINVAL;
 	}
@@ -3649,36 +3645,32 @@ static int isx005_s_mbus_fmt(struct v4l2_subdev *sd, struct v4l2_mbus_framefmt *
 	state->pix.width = fmt->width;
 	state->pix.height = fmt->height;
 
-	state->pix.pixelformat = V4L2_PIX_FMT_JPEG;
-
-	if(fmt->colorspace == V4L2_COLORSPACE_JPEG)
-	{
-		state->oprmode = ISX005_OPRMODE_IMAGE;
-	}
+	if (fmt->colorspace == V4L2_COLORSPACE_JPEG)
+		state->pix.pixelformat = V4L2_PIX_FMT_JPEG;
 	else
-	{
+		state->pix.pixelformat = 0; /* is this used anywhere? */
+
+	if (fmt->colorspace == V4L2_COLORSPACE_JPEG)
+		state->oprmode = ISX005_OPRMODE_IMAGE;
+	else
 		state->oprmode = ISX005_OPRMODE_VIDEO;
-	}
 
 	framesize_index = isx005_get_framesize_index(sd);
 
-	isx005_msg(&client->dev, "%s:framesize_index = %d\n", __func__, framesize_index);
+	isx005_msg(&client->dev, "%s:framesize_index = %d\n",
+		__func__, framesize_index);
 
 	err = isx005_set_framesize_index(sd, framesize_index);
-	if(err < 0)
-	{
-		dev_err(&client->dev, "%s: set_framesize_index failed\n", __func__);
+	if (err < 0) {
+		dev_err(&client->dev, "%s: set_framesize_index failed\n",
+		__func__);
 		return -EINVAL;
 	}
 
-	if(state->pix.pixelformat == V4L2_PIX_FMT_JPEG)
-	{
+	if (state->pix.pixelformat == V4L2_PIX_FMT_JPEG)
 		state->jpeg.enable = 1;
-	}
 	else
-	{
 		state->jpeg.enable = 0;
-	}
 
 	return 0;
 }
@@ -3736,7 +3728,7 @@ static int isx005_enum_mbus_fmt(struct v4l2_subdev *sd, unsigned int index,
 {
 	int num_entries;
 
-        num_entries = sizeof(capture_fmts)/sizeof(struct v4l2_mbus_framefmt);
+	num_entries = sizeof(capture_fmts)/sizeof(struct v4l2_mbus_framefmt);
 
 	if(index >= num_entries)
 	{
@@ -3753,7 +3745,7 @@ static int isx005_try_mbus_fmt(struct v4l2_subdev *sd, struct v4l2_mbus_framefmt
 	int num_entries = 0;
 	int i = 0;
 
-	num_entries = ARRAY_SIZE(capture_fmts);
+	num_entries = sizeof(capture_fmts) / sizeof(struct v4l2_mbus_framefmt);
 
 	for(i = 0; i < num_entries; i++)
 	{
@@ -4524,7 +4516,7 @@ static const struct v4l2_subdev_core_ops isx005_core_ops = {
 
 static const struct v4l2_subdev_video_ops isx005_video_ops = {
 	.s_crystal_freq = isx005_s_crystal_freq,
-	.g_fmt = isx005_g_fmt,
+	.g_mbus_fmt = isx005_g_mbus_fmt,
 	.s_mbus_fmt = isx005_s_mbus_fmt,
 	.enum_framesizes = isx005_enum_framesizes,
 	.enum_frameintervals = isx005_enum_frameintervals,
@@ -4540,15 +4532,13 @@ static const struct v4l2_subdev_ops isx005_ops = {
 };
 
 #ifdef FACTORY_CHECK
-#ifndef CONFIG_SAMSUNG_YPG1
 extern ssize_t camtype_show(struct device *dev, struct device_attribute *attr, char *buf);
 extern ssize_t camtype_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t size);
 
 static DEVICE_ATTR(camtype, 0644, camtype_show, camtype_store);
 
-extern struct device *sec_cam_dev;
-#endif
 extern struct class *sec_class;
+extern struct device *sec_cam_dev ;
 #endif
 
 /*
@@ -4587,12 +4577,12 @@ static int isx005_probe(struct i2c_client *client,
 	state->pix.height = pdata->default_height;
 
 	if (!pdata->pixelformat)
-	  state->pix.pixelformat = DEFAULT_PIX_FMT;
+		state->pix.pixelformat = DEFAULT_PIX_FMT;
 	else
-	  state->pix.pixelformat = pdata->pixelformat;
+		state->pix.pixelformat = pdata->pixelformat;
 
 	if (!pdata->freq)
-	  state->freq = DEFAULT_MCLK;/* 24MHz default */
+		state->freq = DEFAULT_MCLK;/* 24MHz default */
 	else
 		state->freq = pdata->freq;
 
@@ -4601,7 +4591,7 @@ static int isx005_probe(struct i2c_client *client,
 
 	isx005_msg(&client->dev, "3MP camera ISX005 loaded.\n");
 
-#if defined (FACTORY_CHECK) && !defined (CONFIG_SAMSUNG_YPG1)
+#ifdef FACTORY_CHECK
 	{
 		if (sec_cam_dev == NULL)
 		{
