@@ -37,6 +37,7 @@ elif ! busybox test -e /system/build.prop ; then
     busybox echo "EMERGENCY BOOT" >>boot.txt
     busybox umount /cache
     erase_image cache
+    busybox mkdir -p /cache
     busybox mount -t yaffs2 /dev/block/mtdblock3 /cache
 
     #if ! busybox test -e /cache/recovery ; then
