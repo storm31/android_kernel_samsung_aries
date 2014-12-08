@@ -37,12 +37,11 @@ elif ! busybox test -e /system/build.prop ; then
     busybox echo "EMERGENCY BOOT" >>boot.txt
     busybox umount /cache
     erase_image cache
-    busybox mkdir -p /cache
     busybox mount -t yaffs2 /dev/block/mtdblock3 /cache
 
-    #if ! busybox test -e /cache/recovery ; then
+    if ! busybox test -e /cache/recovery ; then
         busybox mkdir /cache/recovery
-    #fi
+    fi
 
     busybox mount -t vfat /dev/block/mmcblk0p1 /sdcard
     busybox sleep 1
@@ -50,8 +49,8 @@ elif ! busybox test -e /system/build.prop ; then
     if busybox test -e /sdcard/cyanogenmod.cfg ; then
         busybox echo "installing: `busybox cat /sdcard/cyanogenmod.cfg`" >>boot.txt
         busybox echo "creating recovery command" >>boot.txt
-        busybox touch /cache/recovery/extendedcommand
-        busybox echo "--update_package=`busybox cat /sdcard/cyanogenmod.cfg`" > /cache/recovery/extendedcommand
+        busybox touch /cache/recovery/command
+        busybox echo "--update_package=`busybox cat /sdcard/cyanogenmod.cfg`" > /cache/recovery/command
     else
         busybox echo "cyanogenmod.cfg not found" >>boot.txt
     fi
